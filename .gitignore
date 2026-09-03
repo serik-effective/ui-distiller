@@ -1,0 +1,16 @@
+# Captured third-party material: other people's HTML/CSS/JS, pulled for analysis.
+# Never committed — it is not ours, it is bulky, and the analysis that matters
+# already lives in the reports and candidate logs.
+ui-distilled/*/.work/raw/
+ui-distilled/*/.work/**/raw/
+ui-distilled/*/.work/shots/
+ui-distilled/*/.work/**/shots/
+ui-distilled/*/.work/*.json
+ui-distilled/*/.work/*/*.json
+
+# Build output
+dist/
+
+# Local tooling
+node_modules/
+.DS_Store

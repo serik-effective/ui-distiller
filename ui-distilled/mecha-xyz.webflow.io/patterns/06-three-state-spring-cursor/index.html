@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three-state spring cursor — UI Distiller</title>
+<style>
+  :root {
+    --follow: 0.14;     /* lerp factor for the shared spring position */
+    --fade: 200ms;      /* crossfade between cursor states            */
+    --dot: 10px;
+    --hand: 34px;
+    --arrow: 40px;
+
+    --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318;
+  }
+  :root[data-theme="light"] { --bg:#e9edef; --fg:#101014; --muted:#6b6b76; --line:#d3d9dc; --accent:#2f2fff; --panel:#fff; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg); min-height:100vh;
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .stage-area { cursor:none; }        /* native cursor hidden only over the demo area */
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { padding:56px 24px 120px; max-width:900px; margin:0 auto; display:grid; gap:34px; }
+  h2 { font-size:clamp(28px,4.6vw,50px); line-height:1.05; letter-spacing:-.035em; margin:0; max-width:20ch; }
+  p { color:var(--muted); max-width:56ch; margin:0; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+  .card { border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:22px 20px; display:grid; gap:8px; min-height:150px; align-content:end; }
+  .card b { font-size:16px; font-weight:600; }
+  .card span { color:var(--muted); font-size:13px; }
+  a.text { color:var(--fg); }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+
+  /* ---------- the pattern ----------
+     One wrap, three children, one shared spring position. The wrap is
+     centred in the viewport and translated from the centre, so each child
+     only needs to be centred inside it — no per-element offset maths. */
+  .cursor-wrap {
+    position:fixed; inset:0; z-index:2147483647; pointer-events:none;
+    display:grid; place-items:center; will-change:transform;
+  }
+  .cursor-wrap > * { grid-area:1 / 1; opacity:0; transition:opacity var(--fade) cubic-bezier(.16,1,.3,1); }
+  .c-dot   { width:var(--dot); height:var(--dot); border-radius:50%; background:var(--fg); }
+  .c-hand  { width:var(--hand); height:var(--hand); border-radius:50%; border:1px solid var(--fg);
+             display:grid; place-items:center; font-size:10px; letter-spacing:.1em; color:var(--fg); }
+  .c-arrow { width:var(--arrow); height:var(--arrow); border-radius:50%; background:var(--accent);
+             display:grid; place-items:center; color:#fff; font-size:15px; }
+  .cursor-wrap[data-state="idle"]  .c-dot   { opacity:1; }
+  .cursor-wrap[data-state="hand"]  .c-hand  { opacity:1; }
+  .cursor-wrap[data-state="arrow"] .c-arrow { opacity:1; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:6; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:110px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:48px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .state { color:var(--accent); font-variant-numeric:tabular-nums; }
+
+  @media (pointer: coarse) { .cursor-wrap { display:none; } .stage-area { cursor:auto; } }
+  @media (prefers-reduced-motion: reduce) { .cursor-wrap > * { transition-duration:1ms; } }
+</style>
+</head>
+<body class="stage-area">
+
+<header>
+  <h1>Three-state spring cursor</h1>
+  <span class="meta">cursor · microinteraction — trigger: move the pointer, hover links and [hover-arrow] items</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>One spring position, three swappable heads.</h2>
+  <p>The position is computed once per frame and written to a single wrapper. State is decided by event delegation — <code>mouseover</code> asks the target which cursor it wants, and the heads crossfade in place. Adding a new state costs one element and one selector.</p>
+
+  <div class="row">
+    <a class="text" href="#">a plain link</a>
+    <button class="btn">a button</button>
+    <span class="hoverable btn">.hoverable</span>
+  </div>
+
+  <div class="grid">
+    <div class="card" hover-arrow><b>Case study</b><span>hover-arrow → arrow cursor</span></div>
+    <div class="card" hover-arrow><b>Another case</b><span>hover-arrow → arrow cursor</span></div>
+    <div class="card hoverable"><b>Plain hoverable</b><span>.hoverable → hand cursor</span></div>
+    <div class="card"><b>Nothing special</b><span>no attribute → dot cursor</span></div>
+  </div>
+
+  <p>Because everything is driven from one lerped point, the three heads can never desynchronise — a common failure when each element runs its own follow loop.</p>
+</main>
+
+<div class="cursor-wrap" id="cursor" data-state="idle" aria-hidden="true">
+  <div class="c-dot"></div>
+  <div class="c-hand">VIEW</div>
+  <div class="c-arrow">→</div>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-follow">follow</label>
+    <input id="c-follow" type="range" min="2" max="60" step="1" value="14"><output for="c-follow">0.14</output></div>
+  <div class="ctrl"><label for="c-fade">crossfade</label>
+    <input id="c-fade" type="range" min="40" max="800" step="20" value="200" data-var="--fade" data-unit="ms"><output for="c-fade">200ms</output></div>
+  <div class="ctrl"><label for="c-hand">hand size</label>
+    <input id="c-hand" type="range" min="18" max="90" step="2" value="34" data-var="--hand" data-unit="px"><output for="c-hand">34px</output></div>
+  <span class="hint">state: <b class="state" id="stateOut">idle</b></span>
+</div>
+
+<script>
+const CONFIG = { follow: 0.14 };
+const HOVERABLE = 'a, button, [href], .hoverable';
+
+const wrap = document.getElementById('cursor');
+const stateOut = document.getElementById('stateOut');
+
+const mouse = { x: -200, y: -200 };
+const spring = { x: -200, y: -200 };
+let entered = false;
+
+addEventListener('mousemove', e => {
+  if (!entered) {                        // first sighting: snap, do not glide in from nowhere
+    entered = true;
+    mouse.x = spring.x = e.clientX;
+    mouse.y = spring.y = e.clientY;
+    return;
+  }
+  mouse.x = e.clientX; mouse.y = e.clientY;
+});
+document.addEventListener('mouseleave', () => { entered = false; });
+document.addEventListener('mouseenter', e => {
+  entered = true;
+  mouse.x = spring.x = e.clientX; mouse.y = spring.y = e.clientY;
+});
+
+/* state by delegation — no per-element listeners */
+function setState(s) { wrap.dataset.state = s; stateOut.textContent = s; }
+document.addEventListener('mouseover', e => {
+  if (e.target.closest('[hover-arrow]')) setState('arrow');
+  else if (e.target.closest(HOVERABLE)) setState('hand');
+  else setState('idle');
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.closest('[hover-arrow]') || e.target.closest(HOVERABLE)) setState('idle');
+});
+
+/* one loop, one write: translate the whole wrap from the viewport centre */
+(function frame() {
+  requestAnimationFrame(frame);
+  spring.x += (mouse.x - spring.x) * CONFIG.follow;
+  spring.y += (mouse.y - spring.y) * CONFIG.follow;
+  const cx = spring.x - innerWidth / 2;
+  const cy = spring.y - innerHeight / 2;
+  wrap.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
+})();
+
+/* controls */
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    document.documentElement.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+const followEl = document.getElementById('c-follow');
+const followApply = () => {
+  CONFIG.follow = followEl.value / 100;
+  document.querySelector('output[for="c-follow"]').textContent = CONFIG.follow.toFixed(2);
+};
+followEl.addEventListener('input', followApply); followApply();
+
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+});
+</script>
+</body>
+</html>

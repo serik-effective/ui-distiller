@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Section progress navigation — UI Distiller</title>
+<style>
+  :root {
+    --line-dur: 420ms;     /* active/inactive fade                   */
+    --scroll-dur: 1200ms;  /* click-to-section scroll duration       */
+    --anchor: 0.5;         /* trigger line, 0 = top, .5 = viewport centre */
+
+    --bg:#e9edef; --fg:#101014; --muted:#8a8a95; --line:#d3d9dc; --accent:#2f2fff; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  html { scroll-behavior:auto; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:5; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:14px 20px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(8px); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern: the nav is generated from the sections ---------- */
+  .side-nav { position:fixed; left:20px; top:50%; transform:translateY(-50%); z-index:4; width:212px; display:grid; gap:2px; }
+  .nav-group { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .nav-item { all:unset; cursor:pointer; display:grid; grid-template-columns:26px 1fr; gap:8px; align-items:baseline;
+              padding:7px 0; color:var(--muted); transition:color var(--line-dur) cubic-bezier(.16,1,.3,1); position:relative; }
+  .nav-item:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .nav-item .num { font-size:11px; font-variant-numeric:tabular-nums; opacity:.7; }
+  .nav-item .label { font-size:13px; letter-spacing:-.01em; }
+  .nav-item[data-active="true"] { color:var(--fg); }
+  .track { grid-column:1 / -1; height:1px; background:var(--line); margin-top:8px; position:relative; overflow:hidden; }
+  .track > i { position:absolute; inset:0 auto 0 0; width:0%; background:var(--accent); display:block; }
+
+  main { margin-left:264px; padding:104px 24px 0; }
+  section { min-height:92vh; display:grid; align-content:center; gap:14px; border-top:1px solid var(--line); padding:40px 0; max-width:660px; }
+  section:first-of-type { border-top:0; }
+  .kicker { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); }
+  h2 { font-size:clamp(28px,4.4vw,50px); line-height:1.05; letter-spacing:-.03em; margin:0; }
+  p { color:var(--muted); max-width:52ch; margin:0; }
+  footer { margin-left:264px; padding:40px 24px 120px; color:var(--muted); font-size:12px; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:6; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:110px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:52px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .anchor-line { position:fixed; left:0; right:0; height:1px; background:var(--accent); opacity:.25; z-index:3; pointer-events:none; display:none; }
+  .anchor-line.show { display:block; }
+
+  @media (max-width: 860px) {
+    .side-nav { position:static; transform:none; width:auto; margin:88px 20px 0; }
+    main, footer { margin-left:0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .nav-item { transition:none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Section progress navigation</h1>
+  <span class="meta">navigation · scroll — trigger: scroll, click an item</span>
+  <span class="spacer"></span>
+  <button class="btn" id="showline">Show trigger line</button>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<!-- the nav is built at runtime from [data-section] blocks -->
+<nav class="side-nav" id="nav" aria-label="Sections"></nav>
+<div class="anchor-line" id="anchorLine"></div>
+
+<main id="sections">
+  <section data-section data-name="Premise">
+    <span class="kicker">01</span>
+    <h2>The nav is generated from the page.</h2>
+    <p>Each section declares a name. The navigation clones one template item per section, numbers them, and wires each to its own scroll range — nothing is hand-maintained.</p>
+  </section>
+  <section data-section data-name="Progress">
+    <span class="kicker">02</span>
+    <h2>Every item carries its own progress line.</h2>
+    <p>The line is not a page-wide scrollbar. It fills from 0 to 100% across that section's range only, so the nav reads as a set of local timelines.</p>
+  </section>
+  <section data-section data-name="Anchoring">
+    <span class="kicker">03</span>
+    <h2>Ranges are anchored to the viewport centre.</h2>
+    <p>Start and end are offset by half the viewport height, so a section becomes active when it crosses the middle of the screen rather than the top edge. Drag the anchor control to feel the difference.</p>
+  </section>
+  <section data-section data-name="Return">
+    <span class="kicker">04</span>
+    <h2>Scrolling back has to undo cleanly.</h2>
+    <p>Progress is recomputed from geometry on every frame instead of being accumulated, so reversing direction is exact and no state can drift.</p>
+  </section>
+  <section data-section data-name="Travel">
+    <span class="kicker">05</span>
+    <h2>Clicking an item travels, it does not jump.</h2>
+    <p>A long eased scroll keeps the spatial relationship legible — you see what you passed.</p>
+  </section>
+</main>
+
+<footer>Scroll, then click any nav item.</footer>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-anchor">anchor</label>
+    <input id="c-anchor" type="range" min="0" max="100" step="5" value="50"><output for="c-anchor">0.50</output></div>
+  <div class="ctrl"><label for="c-scroll">travel</label>
+    <input id="c-scroll" type="range" min="200" max="3000" step="100" value="1200"><output for="c-scroll">1200ms</output></div>
+  <span class="hint">active: <b id="activeOut">—</b></span>
+</div>
+
+<script>
+const CONFIG = { anchor: 0.5, scrollDuration: 1200 };
+
+const sections = [...document.querySelectorAll('[data-section]')];
+const nav = document.getElementById('nav');
+const activeOut = document.getElementById('activeOut');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* geometry helpers — absolute document coordinates, recomputed on demand */
+const topOf = el => el.getBoundingClientRect().top + scrollY;
+const bottomOf = el => el.getBoundingClientRect().bottom + scrollY;
+
+/* build the nav from the sections */
+nav.innerHTML = '<div class="nav-group">Sections</div>';
+const items = sections.map((sec, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-item';
+  btn.type = 'button';
+  btn.innerHTML =
+    `<span class="num">${String(i + 1).padStart(2, '0')}</span>` +
+    `<span class="label">${sec.dataset.name}</span>` +
+    `<span class="track"><i></i></span>`;
+  btn.addEventListener('click', () => scrollToSection(sec));
+  nav.appendChild(btn);
+  return { btn, fill: btn.querySelector('i'), sec };
+});
+
+/* one pass per frame: progress + active state straight from geometry */
+let updateRaf = 0;
+function update() {
+  updateRaf = 0;
+  const offset = innerHeight * CONFIG.anchor;
+  let active = null;
+
+  for (const it of items) {
+    const start = topOf(it.sec) - offset;
+    const end = bottomOf(it.sec) - offset;
+    const p = Math.min(1, Math.max(0, (scrollY - start) / (end - start)));
+    it.fill.style.width = (p * 100).toFixed(2) + '%';
+    if (scrollY >= start && scrollY < end) active = it;
+  }
+
+  for (const it of items) it.btn.dataset.active = String(it === active);
+  activeOut.textContent = active ? active.sec.dataset.name : '—';
+}
+/* cancel-and-rerequest rather than a boolean latch: a frame that never
+   arrives (hidden tab) must not be able to freeze the loop permanently */
+const request = () => { cancelAnimationFrame(updateRaf); updateRaf = requestAnimationFrame(update); };
+addEventListener('scroll', request, { passive: true });
+addEventListener('resize', request);
+
+/* eased travel instead of a jump */
+let travelRaf = null;
+function scrollToSection(sec) {
+  if (reduced) { scrollTo({ top: topOf(sec) - 90 }); return; }
+  cancelAnimationFrame(travelRaf);
+  const from = scrollY, to = topOf(sec) - 90, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 4);            // quart-out
+  (function step(now) {
+    const t = Math.min((now - t0) / CONFIG.scrollDuration, 1);
+    scrollTo(0, from + (to - from) * ease(t));
+    if (t < 1) travelRaf = requestAnimationFrame(step);
+  })(t0);
+}
+
+/* controls */
+const anchorLine = document.getElementById('anchorLine');
+const placeLine = () => anchorLine.style.top = (innerHeight * CONFIG.anchor) + 'px';
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const apply = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); placeLine(); request(); };
+  el.addEventListener('input', apply); apply();
+};
+bind('c-anchor', v => CONFIG.anchor = v / 100, v => (v / 100).toFixed(2));
+bind('c-scroll', v => CONFIG.scrollDuration = v, v => v + 'ms');
+
+document.getElementById('showline').addEventListener('click', e => {
+  anchorLine.classList.toggle('show');
+  e.currentTarget.textContent = anchorLine.classList.contains('show') ? 'Hide trigger line' : 'Show trigger line';
+});
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+update();
+</script>
+</body>
+</html>

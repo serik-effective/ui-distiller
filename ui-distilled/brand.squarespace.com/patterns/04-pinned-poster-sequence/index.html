@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinned poster sequence — UI Distiller</title>
+<style>
+  :root {
+    --converge: 84px;     /* how far the two text blocks start apart          */
+    --rotate: 65deg;      /* final rotateY of the poster                      */
+    --perspective: 1400px;
+    --stage-vh: 520;      /* scroll length of the pinned section, in vh       */
+    --hold: 0.18;         /* share of the range where nothing moves           */
+
+    --bg:#f4f3f0; --fg:#111; --muted:#6f6f6a; --line:#e0dfd9; --accent:#111; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0f0f0f; --fg:#f2f2f2; --muted:#8b8b8b; --line:#262626; --accent:#f2f2f2; --panel:#161616; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:12px 18px; background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(8px);
+           border-bottom:1px solid var(--line); }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .lede { max-width:720px; margin:0 auto; padding:96px 24px 40px; }
+  .lede h2 { font-size:clamp(26px,4.4vw,44px); line-height:1.05; letter-spacing:-.035em; margin:0 0 14px; max-width:18ch; font-weight:500; }
+  .lede p { color:var(--muted); margin:0; max-width:56ch; }
+
+  /* ---------- the pattern ----------
+     A tall section provides the scroll range; one sticky child is the stage.
+     Progress through the range drives two staged sub-animations: the text
+     converges from both sides, then — after a hold — the poster rotates away
+     in 3D. Nothing is tweened; every value is a pure function of progress. */
+  .sequence { position:relative; height:calc(var(--stage-vh) * 1vh); }
+  .stage { position:sticky; top:0; height:100vh; display:grid; place-items:center;
+           perspective:var(--perspective); overflow:clip; }
+
+  .poster { position:relative; width:min(46vw, 62vh); aspect-ratio:3/4;
+            transform-style:preserve-3d; will-change:transform;
+            transform: rotateY(calc(var(--rot, 0) * 1deg)); }
+  .poster__art { position:absolute; inset:0; background:
+      radial-gradient(70% 55% at 30% 20%, rgba(255,255,255,.45), transparent 60%),
+      linear-gradient(150deg, #c9743f, #7b3f6a 55%, #16161c);
+      display:grid; place-items:center; }
+  .poster__art span { font-size:min(16vw,18vh); line-height:.8; color:#f6f1ea; letter-spacing:-.06em; font-weight:600; opacity:.92; }
+  .poster::after { content:""; position:absolute; inset:0; background:#000;
+                   opacity:calc(var(--shade, 0) * .45); pointer-events:none; }
+
+  .copy { position:absolute; inset:auto 0 12vh 0; display:grid; justify-items:center; gap:6px; text-align:center; padding:0 20px; }
+  .copy__title, .copy__desc { opacity:var(--textOp, 0); will-change:transform, opacity; }
+  .copy__title { font-size:clamp(20px,3vw,34px); letter-spacing:-.03em; font-weight:500;
+                 transform: translateX(calc(var(--conv, 1) * calc(var(--converge) * -1))); }
+  .copy__desc { color:var(--muted); max-width:46ch;
+                transform: translateX(calc(var(--conv, 1) * var(--converge))); }
+
+  .progress { position:fixed; left:18px; bottom:52px; z-index:15; font-size:11px; color:var(--muted);
+              font-variant-numeric:tabular-nums; display:grid; gap:3px; }
+  .progress b { color:var(--accent); }
+  .bar { width:150px; height:2px; background:var(--line); position:relative; }
+  .bar > i { position:absolute; inset:0 auto 0 0; width:0%; background:var(--accent); display:block; }
+
+  .after { max-width:720px; margin:0 auto; padding:60px 24px 140px; color:var(--muted); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:9px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:92px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sequence { height:120vh; }
+    .poster { transform:none !important; }
+    .copy__title, .copy__desc { transform:none !important; opacity:1 !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pinned poster sequence</h1>
+  <span class="meta">scroll · 3d · typography — trigger: scroll through the pinned section</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="lede">
+  <h2>Two animations sharing one scroll range, in sequence.</h2>
+  <p>The section is five viewports tall and its stage is sticky, so scrolling moves a progress value rather than the page. That value is split into stages: the caption converges from both edges and fades up, the composition holds still for a moment, then the poster rotates away in 3D. Every property is computed from progress, so scrolling backwards is exact.</p>
+</div>
+
+<section class="sequence" id="sequence">
+  <div class="stage" id="stage">
+    <div class="poster" id="poster">
+      <div class="poster__art"><span>03</span></div>
+    </div>
+    <div class="copy">
+      <div class="copy__title" id="title">Colour carries the idea</div>
+      <div class="copy__desc" id="desc">Text arrives from both sides and meets in the middle before anything else moves.</div>
+    </div>
+  </div>
+</section>
+
+<div class="after">
+  <p>Because the mapping is a function and not a timeline, the two stages can overlap or be separated by changing one number — the hold — without re-timing anything.</p>
+</div>
+
+<div class="progress">
+  <span>progress <b id="pOut">0.00</b> · stage <b id="sOut">converge</b></span>
+  <span class="bar"><i id="pBar"></i></span>
+  <span>rotateY <b id="rOut">0°</b> · text <b id="tOut">0.00</b></span>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-len">length</label>
+    <input id="c-len" type="range" min="200" max="900" step="20" value="520" data-var="--stage-vh"><output for="c-len">520vh</output></div>
+  <div class="ctrl"><label for="c-conv">converge</label>
+    <input id="c-conv" type="range" min="0" max="260" step="4" value="84" data-var="--converge" data-unit="px"><output for="c-conv">84px</output></div>
+  <div class="ctrl"><label for="c-rot">rotate</label>
+    <input id="c-rot" type="range" min="0" max="90" step="1" value="65"><output for="c-rot">65°</output></div>
+  <div class="ctrl"><label for="c-hold">hold</label>
+    <input id="c-hold" type="range" min="0" max="60" step="2" value="18"><output for="c-hold">0.18</output></div>
+  <div class="ctrl"><label for="c-persp">perspective</label>
+    <input id="c-persp" type="range" min="400" max="3000" step="50" value="1400" data-var="--perspective" data-unit="px"><output for="c-persp">1400px</output></div>
+  <span class="hint">scroll back up — every value is a function of progress</span>
+</div>
+
+<script>
+const CONFIG = {
+  rotate: 65,     // degrees of rotateY at the end of the range
+  hold: 0.18,     // share of the range spent still, between the two stages
+  textEnd: 0.42,  // progress at which the caption has fully converged
+};
+
+const clamp01 = v => Math.min(1, Math.max(0, v));
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+const sequence = document.getElementById('sequence');
+const poster = document.getElementById('poster');
+const stage = document.getElementById('stage');
+const root = document.documentElement;
+const pOut = document.getElementById('pOut');
+const sOut = document.getElementById('sOut');
+const rOut = document.getElementById('rOut');
+const tOut = document.getElementById('tOut');
+const pBar = document.getElementById('pBar');
+
+/* progress of the pinned section: 0 when its top reaches the viewport top,
+   1 when its bottom reaches the viewport bottom */
+function progress() {
+  const r = sequence.getBoundingClientRect();
+  const travel = r.height - innerHeight;
+  if (travel <= 0) return 0;
+  return clamp01(-r.top / travel);
+}
+
+/* one pure function from progress to every animated value */
+function apply() {
+  const p = progress();
+
+  // stage 1 — the caption converges and fades up
+  const t = easeOut(clamp01(p / CONFIG.textEnd));
+
+  // stage 2 — after the hold, the poster rotates away
+  const start = CONFIG.textEnd + CONFIG.hold;
+  const r = easeInOut(clamp01((p - start) / (1 - start)));
+
+  stage.style.setProperty('--conv', (1 - t).toFixed(4));
+  stage.style.setProperty('--textOp', t.toFixed(4));
+  poster.style.setProperty('--rot', (r * CONFIG.rotate).toFixed(3));
+  poster.style.setProperty('--shade', (r * 0.8).toFixed(3));
+
+  pOut.textContent = p.toFixed(2);
+  pBar.style.width = (p * 100).toFixed(1) + '%';
+  rOut.textContent = (r * CONFIG.rotate).toFixed(0) + '°';
+  tOut.textContent = t.toFixed(2);
+  sOut.textContent = p < CONFIG.textEnd ? 'converge' : (p < start ? 'hold' : 'rotate');
+}
+
+let raf = 0;
+const request = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(apply); };
+addEventListener('scroll', request, { passive: true });
+addEventListener('resize', request);
+
+/* controls */
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => {
+    const unit = input.dataset.unit || '';
+    root.style.setProperty(input.dataset.var, input.value + unit);
+    out.textContent = input.value + (unit || 'vh');
+    request();
+  };
+  input.addEventListener('input', go); go();
+});
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); apply(); };
+  el.addEventListener('input', go); go();
+};
+bind('c-rot', v => CONFIG.rotate = v, v => v + '°');
+bind('c-hold', v => CONFIG.hold = v / 100, v => (v / 100).toFixed(2));
+
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+/* a seam for testing: drive the sequence without scrolling */
+window.SEQ = { apply, progress, config: CONFIG };
+
+apply();
+</script>
+</body>
+</html>

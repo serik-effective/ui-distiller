@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gated preloader — UI Distiller</title>
+<style>
+  :root {
+    --bar-dur: 3800ms;      /* the counter's own minimum runtime      */
+    --loop-dur: 1100ms;     /* one forward+reverse cycle of the mark  */
+    --exit-dur: 900ms;      /* curtain lift                           */
+    --settle: 550ms;        /* pause after the last loop before exit  */
+    --ease: cubic-bezier(.82, 0, .18, 1);
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+    --bg:#e9edef; --fg:#101014; --muted:#6b6b76; --line:#d3d9dc; --accent:#2f2fff; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:760px; margin:0 auto; padding:64px 24px 140px; display:grid; gap:22px; }
+  h2 { font-size:clamp(28px,4.6vw,50px); line-height:1.05; letter-spacing:-.035em; margin:0; }
+  p { color:var(--muted); max-width:56ch; margin:0; }
+  .gates { display:grid; gap:8px; margin-top:8px; }
+  .gate { display:grid; grid-template-columns:18px 1fr auto; gap:10px; align-items:center; font-size:13px;
+          border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:var(--panel); }
+  .gate i { width:9px; height:9px; border-radius:50%; background:var(--line); display:block; }
+  .gate[data-open="true"] i { background:var(--accent); }
+  .gate[data-open="true"] { color:var(--fg); }
+  .gate:not([data-open="true"]) { color:var(--muted); }
+  .gate b { font-weight:500; }
+  .gate span { font-variant-numeric:tabular-nums; font-size:12px; color:var(--muted); }
+
+  /* ---------- the pattern ---------- */
+  .preloader { position:fixed; inset:0; z-index:50; background:var(--panel); display:grid;
+               grid-template-rows:1fr auto; padding:28px; transform:translateY(0); }
+  .preloader.gone { transform:translateY(-100%); transition:transform var(--exit-dur) var(--ease); }
+  .preloader[hidden] { display:none; }
+  .mark-wrap { display:grid; place-items:center; overflow:hidden; }
+  .mark { font-size:clamp(46px,11vw,110px); letter-spacing:-.05em; font-weight:700; line-height:1;
+          transform:translateY(120%); transition:transform 1s var(--ease-out); }
+  .preloader.ready .mark { transform:none; }
+  .mark em { font-style:normal; display:inline-block; color:var(--accent);
+             transform:scaleX(var(--s,1)); transform-origin:left center; }
+  .pre-foot { display:grid; gap:10px; }
+  .bar { height:1px; background:var(--line); position:relative; overflow:hidden; }
+  .bar > i { position:absolute; inset:0 auto 0 0; width:0%; background:var(--fg); display:block; }
+  .pre-meta { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:60; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:100px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:52px; }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .preloader.gone, .mark { transition-duration:1ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="preloader" id="preloader">
+  <div class="mark-wrap"><div class="mark" id="mark">MARK<em id="marktail">—</em></div></div>
+  <div class="pre-foot">
+    <div class="bar"><i id="fill"></i></div>
+    <div class="pre-meta"><span id="mode">first visit</span><span id="counter">00</span></div>
+  </div>
+</div>
+
+<header>
+  <h1>Gated preloader</h1>
+  <span class="meta">loading · motion — trigger: reload, or replay</span>
+  <span class="spacer"></span>
+  <button class="btn" id="replay">Replay</button>
+  <button class="btn" id="forget">Forget visit</button>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>The intro ends when three separate things agree.</h2>
+  <p>A preloader that waits only for <code>load</code> flashes on a fast connection and lies on a slow one. This one opens three gates independently — a counter that must finish its own run, a mark animation that must finish the cycle it is in, and the actual page load — and leaves only when all three are open.</p>
+
+  <div class="gates">
+    <div class="gate" id="g-bar" data-open="false"><i></i><b>Counter reached 100</b><span>—</span></div>
+    <div class="gate" id="g-loop" data-open="false"><i></i><b>Mark finished its current cycle</b><span>—</span></div>
+    <div class="gate" id="g-load" data-open="false"><i></i><b>Page reported loaded</b><span>—</span></div>
+  </div>
+
+  <p>The second gate is the interesting one: the mark loops forward and back until the page is ready, then finishes the cycle it happens to be in rather than cutting mid-motion. The intro therefore never stops on a half-drawn frame, whatever the connection does.</p>
+  <p>Returning visitors get the short version — the counter is skipped, one cycle plays, and the curtain lifts. That decision is stored per session, so it survives navigation but not a new visit.</p>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-bar">counter</label>
+    <input id="c-bar" type="range" min="600" max="6000" step="200" value="3800" data-var="--bar-dur" data-unit="ms"><output for="c-bar">3800ms</output></div>
+  <div class="ctrl"><label for="c-loop">cycle</label>
+    <input id="c-loop" type="range" min="300" max="2500" step="100" value="1100" data-var="--loop-dur" data-unit="ms"><output for="c-loop">1100ms</output></div>
+  <div class="ctrl"><label for="c-load">fake load</label>
+    <input id="c-load" type="range" min="0" max="8000" step="250" value="2000"><output for="c-load">2000ms</output></div>
+  <div class="ctrl"><label for="c-exit">exit</label>
+    <input id="c-exit" type="range" min="200" max="2000" step="50" value="900" data-var="--exit-dur" data-unit="ms"><output for="c-exit">900ms</output></div>
+  <span class="hint">gates open independently; the curtain waits for all three</span>
+</div>
+
+<script>
+const CONFIG = { fakeLoad: 2000 };
+const root = document.documentElement;
+const ms = n => parseFloat(getComputedStyle(root).getPropertyValue(n));
+
+const pre = document.getElementById('preloader');
+const fill = document.getElementById('fill');
+const counter = document.getElementById('counter');
+const modeOut = document.getElementById('mode');
+const tail = document.getElementById('marktail');
+const gates = {
+  bar: document.getElementById('g-bar'),
+  loop: document.getElementById('g-loop'),
+  load: document.getElementById('g-load'),
+};
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let state = {};
+let timers = [], rafs = [];
+const later = (fn, t) => { const id = setTimeout(fn, t); timers.push(id); return id; };
+
+function openGate(name) {
+  if (state[name]) return;
+  state[name] = true;
+  const g = gates[name];
+  g.dataset.open = 'true';
+  g.querySelector('span').textContent = '+' + Math.round(performance.now() - state.t0) + 'ms';
+  tryExit();
+}
+
+function tryExit() {
+  if (!(state.bar && state.loop && state.load)) return;
+  later(() => {
+    pre.classList.add('gone');
+    later(() => { pre.hidden = true; }, ms('--exit-dur') + 60);
+  }, reduced ? 0 : ms('--settle'));
+}
+
+/* gate 1 — the counter runs its own minimum duration */
+function runCounter(full) {
+  if (!full) { fill.style.width = '100%'; counter.textContent = '100'; openGate('bar'); return; }
+  const dur = ms('--bar-dur'), t0 = performance.now();
+  const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;   // power2.inOut
+  (function step(now) {
+    const t = Math.min((now - t0) / dur, 1), p = ease(t);
+    fill.style.width = (p * 100).toFixed(1) + '%';
+    counter.textContent = String(Math.round(p * 100)).padStart(2, '0');
+    if (t < 1) rafs.push(requestAnimationFrame(step));
+    else openGate('bar');
+  })(t0);
+}
+
+/* gate 2 — the mark loops forward/back and always finishes its cycle */
+function runLoop() {
+  let dir = 1;
+  (function cycle() {
+    const dur = ms('--loop-dur') / 2, t0 = performance.now();
+    (function step(now) {
+      const t = Math.min((now - t0) / dur, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      tail.style.setProperty('--s', String(dir > 0 ? 1 + eased * 7 : 8 - eased * 7));
+      if (t < 1) { rafs.push(requestAnimationFrame(step)); return; }
+      if (dir > 0) { dir = -1; cycle(); return; }
+      dir = 1;
+      if (state.load) openGate('loop');    // page ready → stop on a clean frame
+      else cycle();                        // otherwise keep looping
+    })(t0);
+  })();
+}
+
+function start() {
+  timers.forEach(clearTimeout); rafs.forEach(cancelAnimationFrame);
+  timers = []; rafs = [];
+  state = { bar: false, loop: false, load: false, t0: performance.now() };
+  Object.values(gates).forEach(g => { g.dataset.open = 'false'; g.querySelector('span').textContent = '—'; });
+
+  const returning = sessionStorage.getItem('seen') === '1';
+  sessionStorage.setItem('seen', '1');
+  const full = !returning;
+  modeOut.textContent = full ? 'first visit · full intro' : 'returning · short intro';
+
+  pre.hidden = false;
+  pre.classList.remove('gone', 'ready');
+  fill.style.width = '0%';
+  counter.textContent = '00';
+  void pre.offsetWidth;
+  pre.classList.add('ready');
+
+  runCounter(full);
+  runLoop();
+  later(() => openGate('load'), CONFIG.fakeLoad);   // stands in for window load
+}
+
+document.getElementById('replay').addEventListener('click', start);
+document.getElementById('forget').addEventListener('click', () => {
+  sessionStorage.removeItem('seen');
+  start();
+});
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    root.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+const loadEl = document.getElementById('c-load');
+const loadApply = () => {
+  CONFIG.fakeLoad = Number(loadEl.value);
+  document.querySelector('output[for="c-load"]').textContent = CONFIG.fakeLoad + 'ms';
+};
+loadEl.addEventListener('input', loadApply); loadApply();
+
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conditional difference header — UI Distiller</title>
+<style>
+  :root {
+    --header-h: 54px;
+    --menu-blur: 40px;
+    --menu-dim: .8;
+    --swap-dur: .3s;
+
+    --bg:#0f0f0f; --fg:#f4f4f4; --muted:#8b8b8b; --line:#262626; --accent:#f4f4f4; --panel:#171717;
+  }
+  :root[data-theme="light"] { --bg:#f3f3f1; --fg:#111; --muted:#666; --line:#dcdcd6; --accent:#111; --panel:#fff; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--fg); overflow:hidden;
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  /* ---------- the pattern ----------
+     The header is one layer of white text in difference blend, so it inverts
+     against whatever scrolls beneath it — no per-section colour classes, no
+     IntersectionObserver flipping a light/dark modifier.
+
+     The craft is knowing when to switch it OFF. Over a blurred overlay or a
+     mid-grey the inversion turns muddy and unreadable, so the blend is gated
+     by a class on the body and dropped the moment the menu opens. */
+  .header {
+    position:fixed; inset:0 0 auto 0; z-index:10; height:var(--header-h);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 18px; pointer-events:none;
+    color:#fff;                              /* white is the only colour that inverts predictably */
+    transition: color var(--swap-dur) ease;
+  }
+  body.useBlendMode .header { mix-blend-mode: difference; }
+  /* menu open, or a section that opts out: plain colour, no blend */
+  body.menuOpen .header,
+  body.override .header { mix-blend-mode: normal !important; color: var(--fg); }
+
+  .header a, .header button { pointer-events:auto; color:inherit; }
+  .header__brand { font-weight:600; letter-spacing:-.01em; }
+  .header__right { display:flex; gap:18px; align-items:center; }
+  .header button { font:inherit; background:transparent; border:0; cursor:pointer; padding:4px 2px; }
+  .header button:focus-visible { outline:2px solid currentColor; outline-offset:3px; }
+
+  /* strips of very different luminance for the header to travel over */
+  .strips { position:absolute; inset:0; overflow-y:auto; overscroll-behavior:contain; }
+  .strip { height:46vh; display:grid; place-content:center; gap:8px; text-align:center; }
+  .strip b { font-size:clamp(22px,4vw,44px); letter-spacing:-.03em; font-weight:500; }
+  .strip span { font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.7; }
+  .s-white { background:#fff; color:#111; }
+  .s-black { background:#080808; color:#f4f4f4; }
+  .s-mid   { background:#7c7c7c; color:#111; }
+  .s-img   { color:#fff; background:
+      radial-gradient(80% 60% at 30% 20%, rgba(255,255,255,.35), transparent 60%),
+      linear-gradient(135deg,#3a2b6d,#b2543a 55%,#101014); }
+  .s-photo { color:#fff; background:
+      repeating-linear-gradient(115deg, rgba(0,0,0,.25) 0 26px, rgba(255,255,255,.12) 26px 52px),
+      linear-gradient(160deg,#1d3b2a,#c8b07a); }
+
+  /* menu overlay: the case where the blend has to be given up */
+  .menu { position:fixed; inset:0; z-index:9; display:grid; align-content:center; gap:6px; padding:0 18px;
+          background:color-mix(in srgb, var(--bg) calc(var(--menu-dim) * 100%), transparent);
+          backdrop-filter:blur(var(--menu-blur)); -webkit-backdrop-filter:blur(var(--menu-blur));
+          opacity:0; visibility:hidden; transition:opacity .35s ease, visibility 0s linear .35s; }
+  body.menuOpen .menu { opacity:1; visibility:visible; transition:opacity .35s ease, visibility 0s; }
+  .menu a { display:block; text-decoration:none; color:var(--fg); font-size:clamp(26px,5vw,48px);
+            letter-spacing:-.035em; padding:4px 0; opacity:1; transition:opacity .3s ease; }
+  .menu:hover a { opacity:.3; }
+  .menu a:hover, .menu a:focus-visible { opacity:1; }
+
+  .flag { position:fixed; left:18px; bottom:60px; z-index:11; font-size:11px; color:var(--muted);
+          font-variant-numeric:tabular-nums; }
+  .flag b { color:var(--accent); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:20; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:9px 18px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:96px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:1ms !important; } }
+</style>
+</head>
+<body class="useBlendMode">
+
+<header class="header">
+  <span class="header__brand">Difference Header</span>
+  <span class="header__right">
+    <button id="menuBtn" aria-expanded="false">Index</button>
+  </span>
+</header>
+
+<nav class="menu" id="menu" aria-label="Overlay">
+  <a href="#">Work</a><a href="#">Studio</a><a href="#">Archive</a><a href="#">Contact</a>
+</nav>
+
+<div class="strips" id="strips">
+  <div class="strip s-white"><b>White</b><span>header inverts to black</span></div>
+  <div class="strip s-black"><b>Near black</b><span>header stays white</span></div>
+  <div class="strip s-img"><b>Saturated artwork</b><span>inversion follows the image</span></div>
+  <div class="strip s-mid"><b>Mid grey — the failure case</b><span>difference against 50% grey is unreadable</span></div>
+  <div class="strip s-photo"><b>Busy texture</b><span>still legible, because only luminance matters</span></div>
+  <div class="strip s-white"><b>White again</b><span>scroll back up and watch it flip</span></div>
+</div>
+
+<div class="flag">blend: <b id="blendOut">difference</b> · body: <b id="bodyOut">useBlendMode</b></div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-blur">menu blur</label>
+    <input id="c-blur" type="range" min="0" max="80" step="2" value="40" data-var="--menu-blur" data-unit="px"><output for="c-blur">40px</output></div>
+  <div class="ctrl"><label for="c-dim">menu opacity</label>
+    <input id="c-dim" type="range" min="0" max="100" step="5" value="80"><output for="c-dim">0.80</output></div>
+  <label class="toggle"><input type="checkbox" id="blendOn" checked> blend enabled</label>
+  <label class="toggle"><input type="checkbox" id="override"> section opts out</label>
+  <span class="hint">open the menu, then untick “blend enabled” to see why it is dropped</span>
+</div>
+
+<script>
+const body = document.body;
+const menuBtn = document.getElementById('menuBtn');
+const blendOut = document.getElementById('blendOut');
+const bodyOut = document.getElementById('bodyOut');
+const header = document.querySelector('.header');
+
+function report() {
+  blendOut.textContent = getComputedStyle(header).mixBlendMode;
+  bodyOut.textContent = [...body.classList].join(' ') || '(none)';
+}
+
+menuBtn.addEventListener('click', () => {
+  const open = body.classList.toggle('menuOpen');   // dropping the blend is part of opening
+  menuBtn.setAttribute('aria-expanded', String(open));
+  menuBtn.textContent = open ? 'Close' : 'Index';
+  report();
+});
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && body.classList.contains('menuOpen')) menuBtn.click();
+});
+
+document.getElementById('blendOn').addEventListener('change', e => {
+  body.classList.toggle('useBlendMode', e.target.checked);
+  report();
+});
+document.getElementById('override').addEventListener('change', e => {
+  body.classList.toggle('override', e.target.checked);
+  report();
+});
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    document.documentElement.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+const dim = document.getElementById('c-dim');
+const dimApply = () => {
+  document.documentElement.style.setProperty('--menu-dim', String(dim.value / 100));
+  document.querySelector('output[for="c-dim"]').textContent = (dim.value / 100).toFixed(2);
+};
+dim.addEventListener('input', dimApply); dimApply();
+
+document.getElementById('strips').addEventListener('scroll', report, { passive: true });
+report();
+</script>
+</body>
+</html>

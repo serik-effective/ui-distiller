@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push-and-cover page transition — UI Distiller</title>
+<style>
+  :root {
+    --push: 200px;          /* how far the outgoing page is pushed up */
+    --dur-push: 1200ms;     /* push duration                          */
+    --dur-cover: 900ms;     /* overlay travel                         */
+    --dur-fader: 500ms;     /* tint fade                              */
+    --cover-delay: 150ms;   /* overlay starts after the push begins   */
+    --hold: 300ms;          /* covered hold before the swap           */
+    --ease: cubic-bezier(.82, 0, .18, 1);   /* the site's "menuEase"  */
+
+    --bg:#e9edef; --fg:#101014; --muted:#6b6b76; --line:#d3d9dc; --accent:#2f2fff; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--fg); overflow:hidden;
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  /* page content is pushed as one block */
+  .page-wrapper { position:absolute; inset:0; display:grid; grid-template-rows:auto 1fr auto; will-change:transform; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+  .view { padding:56px 24px; display:grid; align-content:center; justify-items:start; gap:18px; max-width:820px; margin:0 auto; width:100%; }
+  .kicker { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); }
+  h2 { font-size:clamp(34px,7vw,72px); line-height:1.02; letter-spacing:-.04em; margin:0; }
+  p { color:var(--muted); max-width:52ch; margin:0; }
+  nav.routes { display:flex; gap:18px; padding:16px 24px; border-top:1px solid var(--line); }
+  nav.routes a { color:var(--fg); text-decoration:none; font-size:14px; border-bottom:1px solid var(--line); padding-bottom:2px; }
+  nav.routes a:hover { border-color:var(--fg); }
+  nav.routes a[aria-current="page"] { color:var(--accent); border-color:var(--accent); }
+
+  /* sticky chrome moves with the push but lives outside the wrapper */
+  .sticky { position:fixed; right:20px; bottom:64px; z-index:3; font-size:12px; color:var(--muted);
+            border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:6px 12px; will-change:transform; }
+
+  /* transition layers */
+  .fader   { position:fixed; inset:0; z-index:8; background:#2f2fff; opacity:0; pointer-events:none; }
+  .overlay { position:fixed; inset:0; z-index:9; transform:translateY(100%); display:none; pointer-events:none; }
+
+  .controls { border-top:1px solid var(--line); background:var(--panel); display:flex; gap:18px; flex-wrap:wrap;
+              align-items:center; padding:10px 20px; font-size:12px; position:relative; z-index:4; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:110px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:56px; }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper" id="pageWrapper">
+  <header>
+    <h1>Push-and-cover page transition</h1>
+    <span class="meta">page-transition · navigation — trigger: click a route, then Back</span>
+    <span class="spacer"></span>
+    <button class="btn" id="back">← Back</button>
+    <button class="btn" id="theme">Theme</button>
+  </header>
+
+  <section class="view" id="view"></section>
+
+  <nav class="routes" id="routes">
+    <a href="#/" data-color="#e9edef">Index</a>
+    <a href="#/studio" data-color="#E9E7DB">Studio</a>
+    <a href="#/work" data-color="#ffffff">Work</a>
+    <a href="#/contact" data-color="#101014">Contact</a>
+  </nav>
+
+  <div class="controls">
+    <div class="ctrl"><label for="c-push">push</label>
+      <input id="c-push" type="range" min="0" max="480" step="10" value="200" data-var="--push" data-unit="px"><output for="c-push">200px</output></div>
+    <div class="ctrl"><label for="c-cover">cover</label>
+      <input id="c-cover" type="range" min="200" max="2000" step="50" value="900" data-var="--dur-cover" data-unit="ms"><output for="c-cover">900ms</output></div>
+    <div class="ctrl"><label for="c-delay">cover delay</label>
+      <input id="c-delay" type="range" min="0" max="600" step="25" value="150" data-var="--cover-delay" data-unit="ms"><output for="c-delay">150ms</output></div>
+    <div class="ctrl"><label for="c-hold">hold</label>
+      <input id="c-hold" type="range" min="0" max="900" step="50" value="300" data-var="--hold" data-unit="ms"><output for="c-hold">300ms</output></div>
+    <span class="hint">the overlay takes the destination's colour</span>
+  </div>
+</div>
+
+<div class="sticky" id="sticky">sticky chrome</div>
+<div class="fader" id="fader" aria-hidden="true"></div>
+<div class="overlay" id="overlay" aria-hidden="true"></div>
+
+<script>
+/* ------------------------------------------------------------------
+   Fake routes. In the original these are real page loads; the transition
+   is identical because the swap happens while the overlay covers the view.
+------------------------------------------------------------------ */
+const PAGES = {
+  '#/':        { kicker: 'index',   title: 'A page that leaves before it is replaced.', body: 'Click any route. The current view is pushed upward while a coloured panel rises over it, the swap happens under cover, and the incoming page settles from the same offset.' },
+  '#/studio':  { kicker: 'studio',  title: 'The overlay carries the destination colour.', body: 'Each route declares its own background, so the covering panel already reads as the next page before the next page exists.' },
+  '#/work':    { kicker: 'work',    title: 'Departure and arrival are the same gesture.', body: 'Outgoing content translates up by the push distance; incoming content starts at the same offset and returns to zero. Nothing ever cuts.' },
+  '#/contact': { kicker: 'contact', title: 'Back must undo everything.', body: 'A real site restores from bfcache, so the handler resets every layer and replays the entrance. That reset is the part people forget.' },
+};
+
+const ms = name => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+const view = document.getElementById('view');
+const wrapper = document.getElementById('pageWrapper');
+const sticky = document.getElementById('sticky');
+const overlay = document.getElementById('overlay');
+const fader = document.getElementById('fader');
+const routes = document.getElementById('routes');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let busy = false;
+let routeStack = ['#/'];
+
+function render(hash) {
+  const p = PAGES[hash] || PAGES['#/'];
+  view.innerHTML =
+    `<span class="kicker">${p.kicker}</span><h2>${p.title}</h2><p>${p.body}</p>`;
+  [...routes.querySelectorAll('a')].forEach(a =>
+    a.toggleAttribute('aria-current', a.getAttribute('href') === hash));
+}
+
+/* entrance: the incoming page arrives from the push offset */
+function runInAnimation() {
+  const push = getComputedStyle(document.documentElement).getPropertyValue('--push').trim();
+  wrapper.style.transition = 'none';
+  wrapper.style.transform = `translateY(${push})`;
+  sticky.style.transition = 'none';
+  sticky.style.transform = `translateY(${push})`;
+  void wrapper.offsetWidth;
+  const t = `transform ${ms('--dur-push')}ms var(--ease)`;
+  wrapper.style.transition = t; sticky.style.transition = t;
+  wrapper.style.transform = 'translateY(0)';
+  sticky.style.transform = 'translateY(0)';
+}
+
+function go(hash, { pushHistory = true } = {}) {
+  if (busy || !PAGES[hash]) return;
+  busy = true;
+
+  const color = routes.querySelector(`a[href="${hash}"]`)?.dataset.color || '#fff';
+  const push = getComputedStyle(document.documentElement).getPropertyValue('--push').trim();
+
+  // 1. tint fades in immediately
+  fader.style.transition = `opacity ${ms('--dur-fader')}ms cubic-bezier(.45,0,.55,1)`;
+  fader.style.opacity = '1';
+
+  // 2. the outgoing page is pushed up
+  const t = `transform ${ms('--dur-push')}ms var(--ease)`;
+  wrapper.style.transition = t; sticky.style.transition = t;
+  wrapper.style.transform = `translateY(-${push})`;
+  sticky.style.transform = `translateY(-${push})`;
+
+  // 3. the destination-coloured overlay rises, slightly later
+  overlay.style.display = 'block';
+  overlay.style.background = color;
+  overlay.style.transition = 'none';
+  overlay.style.transform = 'translateY(100%)';
+  void overlay.offsetWidth;
+  overlay.style.transition = `transform ${ms('--dur-cover')}ms var(--ease) ${ms('--cover-delay')}ms`;
+  overlay.style.transform = 'translateY(0)';
+
+  const covered = ms('--dur-cover') + ms('--cover-delay') + ms('--hold');
+
+  setTimeout(() => {
+    // 4. swap under cover, then release
+    render(hash);
+    if (pushHistory) routeStack.push(hash);
+    location.hash = hash;
+
+    fader.style.opacity = '0';
+    overlay.style.transition = `transform ${ms('--dur-cover')}ms var(--ease)`;
+    overlay.style.transform = 'translateY(-100%)';
+    runInAnimation();
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.style.transition = 'none';
+      overlay.style.transform = 'translateY(100%)';
+      busy = false;
+    }, ms('--dur-cover') + 60);
+  }, reduced ? 0 : covered);
+}
+
+routes.addEventListener('click', e => {
+  const a = e.target.closest('a');
+  if (!a) return;
+  e.preventDefault();
+  go(a.getAttribute('href'));
+});
+
+/* Back: the original resets every layer on a bfcache restore, then replays
+   the entrance. Same idea here — never trust the page to come back clean. */
+document.getElementById('back').addEventListener('click', () => {
+  if (busy || routeStack.length < 2) return;
+  routeStack.pop();
+  const prev = routeStack[routeStack.length - 1];
+  overlay.style.display = 'none';
+  overlay.style.transform = 'translateY(100%)';
+  fader.style.opacity = '0';
+  render(prev);
+  location.hash = prev;
+  runInAnimation();
+});
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    document.documentElement.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+render(location.hash && PAGES[location.hash] ? location.hash : '#/');
+runInAnimation();
+</script>
+</body>
+</html>

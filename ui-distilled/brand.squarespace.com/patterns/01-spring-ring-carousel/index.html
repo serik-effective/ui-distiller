@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spring ring carousel — UI Distiller</title>
+<style>
+  :root {
+    --bg:#0f0f0f; --fg:#f4f4f4; --muted:#8b8b8b; --line:#262626; --accent:#e8e8e8; --panel:#171717;
+  }
+  :root[data-theme="light"] { --bg:#f2f2f2; --fg:#101010; --muted:#666; --line:#dcdcdc; --accent:#111; --panel:#fff; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:12px 18px; mix-blend-mode:difference; color:#fff; pointer-events:none; }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:#aaa; font-size:11px; }
+  header .spacer { flex:1; }
+  header button { pointer-events:auto; }
+  .btn { font:inherit; font-size:11px; color:inherit; background:transparent; border:1px solid currentColor;
+         border-radius:999px; padding:4px 10px; cursor:pointer; opacity:.75; }
+  .btn:hover { opacity:1; }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern ----------
+     stage      → perspective owner
+     ring       → tilted and pushed back; items are its children in 3D
+     item       → positioned on the circle by translate3d(x, 0, z)
+     item inner → a FULL-VIEWPORT panel, cropped down to a card by clip-path.
+                  Activating an item animates that inset to 0, so the card does
+                  not grow into a page — it stops being cropped. */
+  .stage { position:fixed; inset:0; perspective:1600px; overflow:hidden; cursor:grab; touch-action:none; }
+  .stage.dragging { cursor:grabbing; }
+
+  .ring { position:absolute; left:50%; top:50%; transform-style:preserve-3d; will-change:transform; }
+
+  .item { position:absolute; left:0; top:0; transform-style:preserve-3d; backface-visibility:hidden; will-change:transform; }
+  .item__inner {
+    position:absolute; left:0; top:0;
+    width:100vw; height:100dvh; margin:-50dvh -50vw;   /* centred on the item's origin */
+    display:grid; place-content:center; gap:10px;
+    backface-visibility:hidden; will-change:transform, clip-path;
+    background:var(--p1);
+  }
+  .item__inner .num { font-size:min(34vw, 34dvh); line-height:.8; letter-spacing:-.06em; font-weight:600; color:var(--p2); }
+  .item__inner .cap { text-align:center; color:var(--p2); opacity:.75; font-size:13px; letter-spacing:.14em; text-transform:uppercase; }
+  .p1 { --p1:#1c2a3a; --p2:#e9f0f7; } .p2 { --p1:#3a2c1c; --p2:#f7efe6; }
+  .p3 { --p1:#2b1c3a; --p2:#f0e8f7; } .p4 { --p1:#1c3a2a; --p2:#e8f7ee; }
+  .p5 { --p1:#3a1c26; --p2:#f7e8ec; } .p6 { --p1:#2a2a2a; --p2:#f2f2f2; }
+
+  /* rolling caption, swapped when the active item changes */
+  .caption { position:fixed; left:0; right:0; bottom:54px; z-index:15; display:grid; place-items:center;
+             mix-blend-mode:difference; color:#fff; pointer-events:none; }
+  .caption .mask { display:block; overflow-y:clip; overflow-x:visible; }
+  .caption .mask > span { display:block; font-size:clamp(15px,2.4vw,22px); letter-spacing:-.02em; }
+  .hint { position:fixed; left:18px; bottom:18px; z-index:15; color:var(--muted); font-size:11px; display:flex; align-items:center; gap:8px; }
+  .hint::before { content:""; width:9px; height:9px; border-radius:50%; background:currentColor; }
+  .index { position:fixed; right:18px; bottom:18px; z-index:15; color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:88px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:40px; }
+  .toggle { display:flex; align-items:center; gap:5px; color:var(--muted); }
+  .readout { margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) { .item, .item__inner, .ring { transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Spring ring carousel</h1>
+  <span class="meta">3d · motion · cards — drag, wheel, arrow keys, or click a card</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="stage" id="stage">
+  <div class="ring" id="ring"></div>
+</div>
+
+<div class="caption"><span class="mask"><span id="capText">Drag the ring</span></span></div>
+<div class="hint">drag · wheel · ← → · click a card to open it</div>
+<div class="index" id="indexOut">01 / 06</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-radius">radius</label>
+    <input id="c-radius" type="range" min="120" max="900" step="10" value="420"><output for="c-radius">420</output></div>
+  <div class="ctrl"><label for="c-tilt">tilt X</label>
+    <input id="c-tilt" type="range" min="0" max="70" step="1" value="24"><output for="c-tilt">24°</output></div>
+  <div class="ctrl"><label for="c-depth">push back</label>
+    <input id="c-depth" type="range" min="0" max="1200" step="20" value="520"><output for="c-depth">520</output></div>
+  <div class="ctrl"><label for="c-stiff">stiffness</label>
+    <input id="c-stiff" type="range" min="20" max="300" step="5" value="100"><output for="c-stiff">100</output></div>
+  <div class="ctrl"><label for="c-damp">damping</label>
+    <input id="c-damp" type="range" min="4" max="40" step="1" value="16"><output for="c-damp">16</output></div>
+  <div class="ctrl"><label for="c-clip">crop</label>
+    <input id="c-clip" type="range" min="10" max="95" step="1" value="26"><output for="c-clip">26%</output></div>
+  <label class="toggle"><input type="checkbox" id="billboard" checked> billboard</label>
+  <span class="readout">pr <b id="prOut">0.00</b> · v <b id="velOut">0.00</b> · spin <b id="dirOut">0</b></span>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   Parameters
+------------------------------------------------------------------ */
+const CONFIG = {
+  count: 6,
+  radius: 420,        // ring radius in px
+  tilt: 24,           // rotateX on the ring — the "platter" angle
+  depth: 520,         // translateZ on the ring, pushing it away from the camera
+  stiffness: 100,     // spring pulling pr toward its target index
+  damping: 16,
+  crop: 0.26,         // inset applied to an inactive panel, as a fraction
+  billboard: true,    // items face the camera instead of following the ring
+  scaleDown: 0.8,     // inactive item scale
+  wheelStep: 0.0022,  // wheel delta → index
+  dragStep: 0.006,    // pointer px → index
+  keyBoost: { stiffness: 190, ms: 700 },   // keys feel snappier, then settle back
+};
+
+const PANELS = [
+  { n: '01', cap: 'Ring geometry' },
+  { n: '02', cap: 'Spring, not tween' },
+  { n: '03', cap: 'Velocity picks the spin' },
+  { n: '04', cap: 'Cards are cropped pages' },
+  { n: '05', cap: 'Billboarding' },
+  { n: '06', cap: 'Open by un-cropping' },
+];
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const rad = d => d * Math.PI / 180;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const stage = document.getElementById('stage');
+const ring = document.getElementById('ring');
+const capText = document.getElementById('capText');
+const indexOut = document.getElementById('indexOut');
+const prOut = document.getElementById('prOut');
+const velOut = document.getElementById('velOut');
+const dirOut = document.getElementById('dirOut');
+
+/* ---- build the ring ---- */
+const items = PANELS.map((p, i) => {
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.innerHTML = `<div class="item__inner p${i + 1}"><div class="num">${p.n}</div><div class="cap">${p.cap}</div></div>`;
+  el.addEventListener('click', () => setTarget(i));
+  ring.appendChild(el);
+  return { root: el, inner: el.firstElementChild, activePr: 0, index: i };
+});
+
+/* ---- state: one spring on `pr`, the fractional index ---- */
+let pr = 0, vel = 0, target = 0, spinDir = 0;
+let dragging = false, lastX = 0;
+
+function setTarget(i) {
+  target = i;
+  const step = CONFIG.count;
+  // travel the short way round the ring
+  while (target - pr > step / 2) target -= step;
+  while (pr - target > step / 2) target += step;
+}
+
+/* ---- input ---- */
+stage.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX;
+  stage.classList.add('dragging');
+  stage.setPointerCapture(e.pointerId);
+});
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX;
+  lastX = e.clientX;
+  pr -= dx * CONFIG.dragStep;
+  target = pr;                       // while dragging the spring follows the hand
+});
+const endDrag = () => {
+  if (!dragging) return;
+  dragging = false;
+  stage.classList.remove('dragging');
+  setTarget(Math.round(pr) % CONFIG.count);   // release → snap to the nearest card
+};
+addEventListener('pointerup', endDrag);
+addEventListener('pointercancel', endDrag);
+
+stage.addEventListener('wheel', e => {
+  target += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) * CONFIG.wheelStep;
+}, { passive: true });
+
+let boostTimer = null;
+addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  target += e.key === 'ArrowRight' ? 1 : -1;
+  // the site raises stiffness for a moment on a keypress, then lets it settle
+  const base = CONFIG.stiffness;
+  CONFIG.stiffness = CONFIG.keyBoost.stiffness;
+  clearTimeout(boostTimer);
+  boostTimer = setTimeout(() => { CONFIG.stiffness = base; }, CONFIG.keyBoost.ms);
+});
+
+/* ---- the frame ----
+   The integrator is split out as advance(dt) so it can be stepped by hand
+   (from the console, or a test) instead of only by requestAnimationFrame. */
+let last = 0;
+function frame(now = 0) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  advance(dt);
+}
+
+function advance(dt) {
+  if (!dragging) {
+    const force = (target - pr) * CONFIG.stiffness;
+    vel += (force - vel * CONFIG.damping) * dt;
+    pr += vel * dt;
+  } else {
+    vel = 0;
+  }
+  spinDir = Math.abs(vel) < 0.05 ? 0 : Math.sign(vel);
+
+  const active = ((Math.round(pr) % CONFIG.count) + CONFIG.count) % CONFIG.count;
+  const settled = Math.abs(vel) < 0.15 && Math.abs(target - pr) < 0.02 && !dragging;
+
+  ring.style.transform = `translateZ(${-CONFIG.depth}px) rotateX(${CONFIG.tilt}deg)`;
+
+  for (const it of items) {
+    // ---- ring placement: the whole geometry is these three lines ----
+    const angle = (pr - it.index) / CONFIG.count * 360 + 90;
+    const x = Math.cos(rad(angle)) * CONFIG.radius;
+    const z = Math.sin(rad(angle)) * CONFIG.radius;
+    // billboard: every panel faces the camera. Otherwise each one keeps the
+    // tangent of the ring, so the far side of the platter shows its back.
+    const faceY = CONFIG.billboard ? 0 : -angle + 90;
+    it.root.style.transform = `translate3d(${x.toFixed(2)}px, 0px, ${z.toFixed(2)}px) rotateY(${faceY.toFixed(2)}deg)`;
+
+    // ---- activation: scale, counter-rotation and the crop ----
+    const wantActive = settled && it.index === active ? 1 : 0;
+    it.activePr = reduced ? wantActive : lerp(it.activePr, wantActive, 1 - Math.pow(0.001, dt));
+    const scale = lerp(CONFIG.scaleDown, 1, it.activePr);
+    const inset = CONFIG.crop * 100 * (1 - it.activePr);
+    const insetY = inset;
+    const insetX = inset * (innerWidth / innerHeight > 1 ? 1.55 : 0.7);   // keep the window roughly card-shaped
+    it.inner.style.transform = `scale(${scale.toFixed(4)})`;
+    it.inner.style.clipPath = `inset(${insetY.toFixed(2)}% ${insetX.toFixed(2)}%)`;
+    it.inner.style.zIndex = String(Math.round(1000 + z));
+  }
+
+  prOut.textContent = pr.toFixed(2);
+  velOut.textContent = vel.toFixed(2);
+  dirOut.textContent = String(spinDir);
+  indexOut.textContent = String(active + 1).padStart(2, '0') + ' / ' + String(CONFIG.count).padStart(2, '0');
+  swapCaption(PANELS[active].cap);
+}
+
+/* ---- rolling caption: out upward, reset below, in ---- */
+let capCurrent = '';
+let capBusy = false;
+function swapCaption(text) {
+  if (text === capCurrent || capBusy) return;
+  capCurrent = text;
+  if (reduced) { capText.textContent = text; return; }
+  capBusy = true;
+  capText.style.transition = 'transform .2s cubic-bezier(.55,.06,.68,.19), opacity .2s linear';
+  capText.style.transform = 'translateY(-100%)';
+  capText.style.opacity = '0';
+  setTimeout(() => {
+    capText.textContent = text;
+    capText.style.transition = 'none';
+    capText.style.transform = 'translateY(100%)';
+    void capText.offsetWidth;
+    capText.style.transition = 'transform .5s cubic-bezier(.215,.61,.355,1), opacity .3s linear';
+    capText.style.transform = 'translateY(0)';
+    capText.style.opacity = '1';
+    capBusy = false;
+  }, 200);
+}
+
+requestAnimationFrame(frame);
+setTarget(0);
+
+/* a small seam for tuning and testing from the console */
+window.RING = {
+  config: CONFIG,
+  advance,
+  goTo: setTarget,
+  get state() { return { pr, vel, target, spinDir }; },
+};
+
+/* ---- controls ---- */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const apply = () => { fn(Number(el.value)); if (out) out.textContent = fmt(Number(el.value)); };
+  el.addEventListener('input', apply); apply();
+};
+bind('c-radius', v => CONFIG.radius = v, v => v);
+bind('c-tilt', v => CONFIG.tilt = v, v => v + '°');
+bind('c-depth', v => CONFIG.depth = v, v => v);
+bind('c-stiff', v => CONFIG.stiffness = v, v => v);
+bind('c-damp', v => CONFIG.damping = v, v => v);
+bind('c-clip', v => CONFIG.crop = v / 100, v => v + '%');
+document.getElementById('billboard').addEventListener('change', e => CONFIG.billboard = e.target.checked);
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+});
+</script>
+</body>
+</html>

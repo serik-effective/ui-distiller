@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Directional line mask — UI Distiller</title>
+<style>
+  :root {
+    --dur: .5s;
+    --stagger: .08s;
+    --enter-from: 100%;    /* lines arrive from below … */
+    --leave-to: -110%;     /* … and leave upward, past the mask edge */
+    --ease: cubic-bezier(.215, .61, .355, 1);
+
+    --bg:#f4f4f2; --fg:#111; --muted:#6b6b6b; --line:#dedeD8; --accent:#111; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0f0f0f; --fg:#f4f4f4; --muted:#8b8b8b; --line:#262626; --accent:#f4f4f4; --panel:#171717; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .btn.-solid { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+
+  main { max-width:960px; margin:0 auto; padding:48px 24px 150px; display:grid; gap:34px; }
+  h2 { font-size:clamp(30px,5.6vw,62px); line-height:1.02; letter-spacing:-.04em; margin:0; max-width:15ch; font-weight:500; }
+  p.lede { color:var(--muted); max-width:62ch; margin:0; }
+
+  /* ---------- the pattern ----------
+     One mask per line. The two details that matter:
+     · overflow-y is clipped but overflow-x is NOT, so italics, accents and
+       swashes can still bleed sideways out of the box;
+     · the line leaves in the SAME direction it arrived from, past −110%,
+       instead of retreating the way it came. A swap therefore reads as one
+       continuous movement rather than a rewind. */
+  .mask { display:block; overflow-x:visible; overflow-y:clip; position:relative; }
+  .mask > span {
+    display:block;
+    transition: transform var(--dur) var(--ease), opacity var(--dur) linear;
+    transition-delay: calc(var(--i, 0) * var(--stagger));
+    /* trims the half-leading so the mask hugs the glyphs, not the line box */
+    text-box: trim-end text;
+  }
+  .is-out .mask > span { transform: translateY(var(--enter-from)); opacity:0; }
+  .is-leaving .mask > span { transform: translateY(var(--leave-to)); opacity:0; }
+  .is-in .mask > span { transform: none; opacity:1; }
+
+  .stage { border:1px solid var(--line); background:var(--panel); padding:44px 34px; min-height:340px; display:grid; align-content:center; }
+  .headline { font-size:clamp(26px,4.4vw,46px); line-height:1.06; letter-spacing:-.035em; font-weight:500; margin:0; }
+  .sub { color:var(--muted); margin:18px 0 0; max-width:52ch; }
+
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .peek .mask { outline:1px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
+  .compare { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; }
+  .compare > div { border:1px solid var(--line); padding:22px; background:var(--panel); }
+  .compare h3 { margin:0 0 12px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:500; }
+  .note { color:var(--muted); font-size:12.5px; max-width:70ch; }
+  .support { font-size:12px; color:var(--muted); border:1px solid var(--line); padding:8px 12px; display:inline-block; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:5; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:104px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:52px; }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) { .mask > span { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Directional line mask</h1>
+  <span class="meta">typography · motion — trigger: swap the text, or replay</span>
+  <span class="spacer"></span>
+  <button class="btn" id="masks">Show masks</button>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>Lines leave the way they came in, not the way they arrived from.</h2>
+  <p class="lede">A masked line usually enters from below and, on exit, retreats back down — which reads as a rewind. Here the line continues past the top edge instead, so replacing one block of text with another is a single upward movement handed from the outgoing line to the incoming one.</p>
+
+  <div class="stage" id="stage">
+    <p class="headline is-out" id="headline"></p>
+    <p class="sub is-out" id="sub"></p>
+  </div>
+
+  <div class="row">
+    <button class="btn -solid" id="next">Swap text</button>
+    <button class="btn" id="replay">Replay entrance</button>
+    <button class="btn" id="hide">Send it out</button>
+    <span class="support" id="support">checking text-box support…</span>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h3>continuing (this pattern)</h3>
+      <p class="headline is-out" id="cmpA" style="font-size:24px"></p>
+    </div>
+    <div>
+      <h3>retreating (the common version)</h3>
+      <p class="headline is-out" id="cmpB" style="font-size:24px"></p>
+    </div>
+  </div>
+  <p class="note">Both boxes run the same entrance. Press <em>Swap text</em> and watch the exits: the left one carries on upward, the right one drops back down. The left reads as a sentence being replaced; the right reads as a mistake being undone.</p>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-dur">duration</label>
+    <input id="c-dur" type="range" min="100" max="1600" step="20" value="500" data-var="--dur" data-unit="ms"><output for="c-dur">500ms</output></div>
+  <div class="ctrl"><label for="c-stag">stagger</label>
+    <input id="c-stag" type="range" min="0" max="300" step="10" value="80" data-var="--stagger" data-unit="ms"><output for="c-stag">80ms</output></div>
+  <div class="ctrl"><label for="c-leave">leave to</label>
+    <input id="c-leave" type="range" min="-200" max="0" step="5" value="-110"><output for="c-leave">-110%</output></div>
+  <span class="hint">lines are re-split on resize</span>
+</div>
+
+<script>
+const COPY = [
+  { h: 'A mask is only as good as the edge it hides.',
+    s: 'Clipping vertically while leaving the horizontal axis open lets italics and accents overflow sideways, which is where they belong.' },
+  { h: 'Stagger belongs to the element, not the stylesheet.',
+    s: 'Each line carries its own index as a custom property, so one transition rule covers any number of lines.' },
+  { h: 'Exits deserve as much thought as entrances.',
+    s: 'Sending a line onward instead of backward turns a swap into one gesture rather than two.' },
+];
+
+const root = document.documentElement;
+const headline = document.getElementById('headline');
+const sub = document.getElementById('sub');
+const cmpA = document.getElementById('cmpA');
+const cmpB = document.getElementById('cmpB');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let idx = 0;
+
+/* split into visual lines and wrap each one in its own mask */
+function split(el, text) {
+  el.dataset.source = text ?? el.dataset.source ?? el.textContent.trim();
+  el.innerHTML = el.dataset.source.split(/\s+/).map(w => `<span class="w">${w}</span>`).join(' ');
+  const rows = new Map();
+  for (const w of el.querySelectorAll('.w')) {
+    const t = Math.round(w.getBoundingClientRect().top);
+    (rows.get(t) || rows.set(t, []).get(t)).push(w.textContent);
+  }
+  const lines = [...rows.values()];
+  el.innerHTML = lines
+    .map((words, i) => `<span class="mask" style="--i:${i}"><span>${words.join(' ')}</span></span>`)
+    .join('');
+  return lines.length;
+}
+
+function setState(el, state) {
+  el.classList.remove('is-in', 'is-out', 'is-leaving');
+  el.classList.add(state);
+}
+
+function show(el, text) {
+  split(el, text);
+  setState(el, 'is-out');
+  void el.offsetWidth;
+  requestAnimationFrame(() => setState(el, 'is-in'));
+}
+
+/* the swap: send the current line onward, then bring the new one in from below */
+function swap(el, text, { retreat = false } = {}) {
+  setState(el, retreat ? 'is-out' : 'is-leaving');
+  const wait = reduced ? 0 : parseFloat(getComputedStyle(root).getPropertyValue('--dur')) * 1000 * 0.6;
+  setTimeout(() => show(el, text), wait);
+}
+
+function render(first = false) {
+  const c = COPY[idx % COPY.length];
+  if (first) { show(headline, c.h); show(sub, c.s); show(cmpA, c.h); show(cmpB, c.h); }
+  else {
+    swap(headline, c.h);
+    swap(sub, c.s);
+    swap(cmpA, c.h);
+    swap(cmpB, c.h, { retreat: true });      // the common version, for comparison
+  }
+}
+
+document.getElementById('next').addEventListener('click', () => { idx++; render(); });
+document.getElementById('replay').addEventListener('click', () => {
+  [headline, sub, cmpA, cmpB].forEach(el => { setState(el, 'is-out'); void el.offsetWidth; requestAnimationFrame(() => setState(el, 'is-in')); });
+});
+document.getElementById('hide').addEventListener('click', () => {
+  [headline, sub, cmpA].forEach(el => setState(el, 'is-leaving'));
+  setState(cmpB, 'is-out');
+});
+document.getElementById('masks').addEventListener('click', e => {
+  document.body.classList.toggle('peek');
+  e.currentTarget.textContent = document.body.classList.contains('peek') ? 'Hide masks' : 'Show masks';
+});
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    root.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+const leave = document.getElementById('c-leave');
+const leaveApply = () => {
+  root.style.setProperty('--leave-to', leave.value + '%');
+  document.querySelector('output[for="c-leave"]').textContent = leave.value + '%';
+};
+leave.addEventListener('input', leaveApply); leaveApply();
+
+const supported = CSS.supports('text-box: trim-end text') || CSS.supports('text-box-edge: cap alphabetic');
+document.getElementById('support').textContent = supported
+  ? 'text-box trimming supported — masks hug the glyphs'
+  : 'no text-box support here — masks fall back to the full line box';
+
+let rt;
+addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    for (const el of [headline, sub, cmpA, cmpB]) {
+      const wasIn = el.classList.contains('is-in');
+      split(el);
+      setState(el, wasIn ? 'is-in' : 'is-out');
+    }
+  }, 200);
+});
+
+render(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bracket hover marks — UI Distiller</title>
+<style>
+  :root {
+    --bracket-w: 4px;        /* width of each bracket arm            */
+    --bracket-h: 14px;       /* height of the arm                    */
+    --bracket-gap: 5px;      /* how far outside the label it sits    */
+    --travel: 20px;          /* distance each arm slides in from     */
+    --dur: .4s;
+    --ease: cubic-bezier(.54, 0, .06, .87);
+
+    --bg:#fafafa; --fg:#0b0b0c; --muted:#6b6b76; --line:#e2e2dd; --accent:#1b1b1b; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#e6e6e6; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header.chrome { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header.chrome h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header.chrome .meta { color:var(--muted); font-size:12px; }
+  header.chrome .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:900px; margin:0 auto; padding:44px 24px 150px; display:grid; gap:30px; }
+  h2 { font-size:clamp(26px,4vw,44px); line-height:1.05; letter-spacing:-.035em; margin:0; max-width:20ch; }
+  p.lede { color:var(--muted); max-width:62ch; margin:0; }
+
+  /* a plausible nav bar to put them in */
+  .bar { display:flex; gap:34px; align-items:center; flex-wrap:wrap;
+         border-block:1px solid var(--line); padding:22px 4px; background:var(--panel); }
+
+  /* ---------- the pattern ----------
+     Two pseudo-elements, each a 4px sliver with three of its four borders
+     drawn, so they read as [ and ]. They slide in from ±20px and fade at the
+     same time: nothing about the label itself changes, so the text never
+     shifts and the mark costs no layout. */
+  .marked {
+    position:relative; text-decoration:none; color:inherit;
+    font-size:14px; letter-spacing:.06em; text-transform:uppercase;
+    font-weight:500;
+  }
+  .marked::before, .marked::after {
+    content:""; position:absolute; top:50%; margin-top:calc(var(--bracket-h) / -2);
+    width:var(--bracket-w); height:var(--bracket-h);
+    border:1px solid currentColor;
+    opacity:0;
+    transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  }
+  .marked::before {           /* the "[" — right border removed */
+    left:calc(var(--bracket-gap) * -1);
+    border-right-width:0;
+    transform:translateX(var(--travel));
+  }
+  .marked::after {            /* the "]" — the same sliver, rotated */
+    right:calc(var(--bracket-gap) * -1);
+    border-right-width:0;
+    transform:rotate(180deg) translateX(var(--travel));
+  }
+  .marked:hover::before, .marked:focus-visible::before { opacity:1; transform:translateX(0); }
+  .marked:hover::after,  .marked:focus-visible::after  { opacity:1; transform:rotate(180deg) translateX(0); }
+  /* the current page keeps its marks permanently */
+  .marked[aria-current="page"]::before { opacity:1; transform:translateX(0); }
+  .marked[aria-current="page"]::after  { opacity:1; transform:rotate(180deg) translateX(0); }
+
+  .variants { display:grid; gap:26px; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  .variant { border:1px solid var(--line); background:var(--panel); padding:26px 22px; display:grid; gap:14px; justify-items:start; }
+  .variant h3 { margin:0; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:500; }
+  .big { font-size:26px; letter-spacing:-.02em; text-transform:none; }
+  .thick { --bracket-w:9px; --bracket-h:22px; }
+  .far { --travel:44px; --bracket-gap:12px; }
+
+  .note { color:var(--muted); font-size:12.5px; max-width:70ch; }
+  .zoom { display:flex; align-items:center; gap:20px; padding:22px; border:1px dashed var(--line); }
+  .zoom .marked { font-size:44px; --bracket-h:44px; --bracket-w:11px; --bracket-gap:14px; letter-spacing:-.02em; text-transform:none; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:3; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:100px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) { .marked::before, .marked::after { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header class="chrome">
+  <h1>Bracket hover marks</h1>
+  <span class="meta">microinteraction · navigation · hover — trigger: hover or tab the links</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>Brackets close around the label instead of underlining it.</h2>
+  <p class="lede">Two pseudo-elements, four pixels wide, with one border side dropped so each reads as a bracket. They slide in from twenty pixels out and fade at the same time. The label is untouched — no weight change, no underline, no reflow — so a dense nav bar stays perfectly still while the pointer moves through it.</p>
+
+  <nav class="bar" aria-label="Example">
+    <a class="marked" href="#" aria-current="page">Products</a>
+    <a class="marked" href="#">Pro program</a>
+    <a class="marked" href="#">Projects</a>
+    <a class="marked" href="#">Commercial</a>
+    <a class="marked" href="#">Showrooms</a>
+    <a class="marked" href="#">Contact</a>
+  </nav>
+  <p class="note">The first link carries <code>aria-current="page"</code>, so its marks stay closed permanently — the same visual doing double duty as the active-page indicator.</p>
+
+  <div class="variants">
+    <div class="variant"><h3>default</h3><a class="marked" href="#">Collection</a></div>
+    <div class="variant"><h3>heavier arms</h3><a class="marked thick" href="#">Collection</a></div>
+    <div class="variant"><h3>longer travel</h3><a class="marked far" href="#">Collection</a></div>
+    <div class="variant"><h3>on a large label</h3><a class="marked big" href="#">Collection</a></div>
+  </div>
+
+  <div class="zoom"><a class="marked" href="#">Hover me at size</a></div>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-w">arm width</label>
+    <input id="c-w" type="range" min="2" max="16" step="1" value="4" data-var="--bracket-w" data-unit="px"><output for="c-w">4px</output></div>
+  <div class="ctrl"><label for="c-h">arm height</label>
+    <input id="c-h" type="range" min="8" max="40" step="1" value="14" data-var="--bracket-h" data-unit="px"><output for="c-h">14px</output></div>
+  <div class="ctrl"><label for="c-gap">gap</label>
+    <input id="c-gap" type="range" min="0" max="24" step="1" value="5" data-var="--bracket-gap" data-unit="px"><output for="c-gap">5px</output></div>
+  <div class="ctrl"><label for="c-travel">travel</label>
+    <input id="c-travel" type="range" min="0" max="80" step="2" value="20" data-var="--travel" data-unit="px"><output for="c-travel">20px</output></div>
+  <div class="ctrl"><label for="c-dur">duration</label>
+    <input id="c-dur" type="range" min="80" max="1200" step="20" value="400" data-var="--dur" data-unit="ms"><output for="c-dur">400ms</output></div>
+  <span class="hint">the label never moves</span>
+</div>
+
+<script>
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => {
+    const v = input.value + (input.dataset.unit || '');
+    document.documentElement.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', go); go();
+});
+
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+</script>
+</body>
+</html>

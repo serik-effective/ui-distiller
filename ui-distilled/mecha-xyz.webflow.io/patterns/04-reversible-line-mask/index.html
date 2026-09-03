@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reversible line mask reveal — UI Distiller</title>
+<style>
+  :root {
+    --in-dur: 2000ms;                       /* entrance                       */
+    --out-ratio: 0.6;                       /* exit = entrance × ratio        */
+    --stagger: 100ms;                       /* per line                       */
+    --start: 150%;                          /* how far below its mask a line starts */
+    --descender: 0.3em;                     /* mask bleed so tails are not clipped  */
+    --ease-in: cubic-bezier(.16, 1, .3, 1);      /* expo.out                  */
+    --ease-out: cubic-bezier(.65, 0, .35, 1);    /* power2.inOut              */
+    --line-ease: cubic-bezier(.9, .01, .19, 1);  /* the site's "lineEase"     */
+    --line-dur: 1200ms;
+
+    --bg:#e9edef; --fg:#101014; --muted:#6b6b76; --line:#c9d0d4; --accent:#2f2fff; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:5; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:14px 20px; border-bottom:1px solid var(--line); background:var(--bg); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:820px; margin:0 auto; padding:120px 24px 160px; }
+  .block { min-height:70vh; display:grid; align-content:center; gap:20px; }
+  .kicker { font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); }
+
+  /* ---------- the pattern ----------
+     One mask per rendered line. clip-path leaves the bottom open by
+     --descender so g/y/p tails are never sliced, while the top and sides
+     still clip hard. The inner span is the only thing that moves. */
+  .reveal { margin:0; font-size:clamp(30px,5.4vw,60px); line-height:1.08; letter-spacing:-.035em; font-weight:600; }
+  .reveal.small { font-size:clamp(17px,2vw,21px); line-height:1.5; font-weight:400; color:var(--muted); letter-spacing:-.005em; }
+  .ln { display:block; clip-path: inset(0 0 calc(-1 * var(--descender)) 0); }
+  .ln > span {
+    display:block;
+    transform: translateY(var(--start));
+    transition: transform var(--in-dur) var(--ease-in);
+    transition-delay: calc(var(--i) * var(--stagger));
+  }
+  .is-out .ln > span {
+    transform: translateY(var(--start));
+    transition: transform calc(var(--in-dur) * var(--out-ratio)) var(--ease-out);
+    transition-delay: calc(var(--ri) * var(--stagger));   /* reversed order */
+  }
+  .is-in .ln > span { transform: none; }
+
+  /* rule that draws first, then releases the text under it */
+  .rule { height:1px; background:var(--line); transform:scaleX(0); transform-origin:left center;
+          transition: transform var(--line-dur) var(--line-ease); }
+  .is-in .rule { transform:scaleX(1); }
+
+  .status { position:fixed; right:20px; top:64px; z-index:4; font-size:11px; color:var(--muted);
+            border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:5px 11px; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:6; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:104px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:56px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .peek { outline:1px dashed var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) { .ln > span, .rule { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Reversible line mask reveal</h1>
+  <span class="meta">typography · scroll — trigger: scroll down, then scroll back up</span>
+  <span class="spacer"></span>
+  <button class="btn" id="masks">Show masks</button>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="status" id="status">idle</div>
+
+<main>
+  <div class="block">
+    <span class="kicker">01</span>
+    <div class="rule" data-rule></div>
+    <h2 class="reveal" data-reveal>Lines rise out of their own masks, and go back the way they came.</h2>
+    <p class="reveal small" data-reveal>Scroll past this block and back up. Most sites play the entrance once; this one plays a shorter, differently eased exit in reverse order, so leaving a section feels deliberate rather than abrupt.</p>
+  </div>
+
+  <div class="block">
+    <span class="kicker">02</span>
+    <div class="rule" data-rule></div>
+    <h2 class="reveal" data-reveal>The mask leaves room for descenders.</h2>
+    <p class="reveal small" data-reveal>A plain overflow:hidden wrapper slices the tails of g, y and p at rest. Opening the bottom of the clip by a third of an em keeps the top edge crisp while letting the type sit correctly. Turn on Show masks to see the boxes.</p>
+  </div>
+
+  <div class="block">
+    <span class="kicker">03</span>
+    <div class="rule" data-rule></div>
+    <h2 class="reveal" data-reveal>The rule draws first and hands over to the text.</h2>
+    <p class="reveal small" data-reveal>A one pixel line scales from the left on a steep custom curve; the lines beneath it only start once that gesture is underway. Two elements, one sentence of motion.</p>
+  </div>
+
+  <div class="block">
+    <span class="kicker">04</span>
+    <div class="rule" data-rule></div>
+    <h2 class="reveal" data-reveal>Exit is faster than entry.</h2>
+    <p class="reveal small" data-reveal>Entrance runs long on an expo curve; exit runs at roughly six tenths of that on a symmetric curve, from the last line to the first. The asymmetry is what stops the reverse from reading like a rewind.</p>
+  </div>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-in">entrance</label>
+    <input id="c-in" type="range" min="300" max="3000" step="100" value="2000" data-var="--in-dur" data-unit="ms"><output for="c-in">2000ms</output></div>
+  <div class="ctrl"><label for="c-out">exit ratio</label>
+    <input id="c-out" type="range" min="20" max="150" step="5" value="60"><output for="c-out">0.60</output></div>
+  <div class="ctrl"><label for="c-stag">stagger</label>
+    <input id="c-stag" type="range" min="0" max="300" step="10" value="100" data-var="--stagger" data-unit="ms"><output for="c-stag">100ms</output></div>
+  <div class="ctrl"><label for="c-start">start</label>
+    <input id="c-start" type="range" min="100" max="300" step="10" value="150" data-var="--start" data-unit="%"><output for="c-start">150%</output></div>
+  <span class="hint">masks bleed <b>0.3em</b> at the bottom for descenders</span>
+</div>
+
+<script>
+const root = document.documentElement;
+const statusEl = document.getElementById('status');
+
+/* ---- split into visual lines, wrap each in a mask ---- */
+function splitLines(el) {
+  if (!el.dataset.source) el.dataset.source = el.textContent.trim();
+  el.innerHTML = el.dataset.source.split(/\s+/).map(w => `<span class="w">${w}</span>`).join(' ');
+  const rows = new Map();
+  for (const w of el.querySelectorAll('.w')) {
+    const t = Math.round(w.getBoundingClientRect().top);
+    (rows.get(t) || rows.set(t, []).get(t)).push(w.textContent);
+  }
+  const lines = [...rows.values()];
+  el.innerHTML = lines.map((words, i) =>
+    `<span class="ln" style="--i:${i}; --ri:${lines.length - 1 - i}"><span>${words.join(' ')}</span></span>`
+  ).join('');
+}
+
+const targets = [...document.querySelectorAll('[data-reveal]')];
+const blocks = [...document.querySelectorAll('.block')];
+const splitAll = () => targets.forEach(splitLines);
+splitAll();
+
+/* ---- enter / leave-back, both directions animated ---- */
+let lastY = scrollY;
+const io = new IntersectionObserver(entries => {
+  const down = scrollY >= lastY;
+  lastY = scrollY;
+  for (const e of entries) {
+    if (e.isIntersecting) {
+      e.target.classList.remove('is-out');
+      e.target.classList.add('is-in');
+      statusEl.textContent = 'entering · ' + e.target.querySelector('.kicker').textContent;
+    } else if (!down) {                 // only reverse when scrolling back up
+      e.target.classList.remove('is-in');
+      e.target.classList.add('is-out');
+      statusEl.textContent = 'leaving back · ' + e.target.querySelector('.kicker').textContent;
+    }
+  }
+}, { threshold: 0.15 });
+blocks.forEach(b => io.observe(b));
+
+/* ---- controls ---- */
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    root.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+const outRatio = document.getElementById('c-out');
+const outApply = () => {
+  root.style.setProperty('--out-ratio', String(outRatio.value / 100));
+  document.querySelector('output[for="c-out"]').textContent = (outRatio.value / 100).toFixed(2);
+};
+outRatio.addEventListener('input', outApply); outApply();
+
+document.getElementById('masks').addEventListener('click', e => {
+  document.querySelectorAll('.ln').forEach(l => l.classList.toggle('peek'));
+  const on = document.querySelector('.ln.peek');
+  e.currentTarget.textContent = on ? 'Hide masks' : 'Show masks';
+});
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+let rt;
+addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    const inState = blocks.map(b => b.classList.contains('is-in'));
+    splitAll();
+    blocks.forEach((b, i) => b.classList.toggle('is-in', inState[i]));
+  }, 200);
+});
+</script>
+</body>
+</html>

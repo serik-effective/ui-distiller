@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reciprocal-scale card hover — UI Distiller</title>
+<style>
+  :root {
+    --frame-x: 0.913;      /* frame contracts horizontally */
+    --frame-y: 0.861;      /* and a little more vertically */
+    --img-x: 1.0952902519; /* exactly 1 / --frame-x */
+    --img-y: 1.1614401858; /* exactly 1 / --frame-y */
+    --lift: 4.624;         /* cqw the info row rises by */
+    --inset: 3rem;         /* padding the text gains on hover */
+    --dur: .4s;
+    --ease: cubic-bezier(.54, 0, .06, .87);
+
+    --bg:#fafafa; --fg:#0b0b0c; --muted:#6b6b76; --line:#e2e2dd; --accent:#1b1b1b; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#e6e6e6; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:1180px; margin:0 auto; padding:44px 24px 150px; display:grid; gap:26px; }
+  .lede { color:var(--muted); max-width:64ch; }
+  h2 { font-size:clamp(26px,4vw,44px); line-height:1.05; letter-spacing:-.035em; margin:0; max-width:20ch; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:34px 28px; }
+
+  /* ---------- the pattern ----------
+     The frame scales down; the picture scales up by exactly the reciprocal.
+     Their product is 1, so the photograph does not move or resize at all —
+     only the window onto it gets smaller. The info row rises by a container
+     -relative amount, so the gesture is identical at every card width. */
+  .card { container-type:inline-size; display:flex; flex-direction:column; row-gap:1.2rem;
+          text-decoration:none; color:inherit; }
+  .card__frame { overflow:hidden; aspect-ratio:692/460; }
+  .card__frame, .card__frame .photo { transition: transform var(--dur) var(--ease); }
+  .card__frame .photo { display:block; width:100%; height:100%; }
+
+  @media (hover:hover) {
+    .card:hover .card__frame { transform: scale(var(--frame-x), var(--frame-y)); }
+    .card:hover .card__frame .photo { transform: scale(var(--img-x), var(--img-y)); }
+    .card:hover .card__info { transform: translateY(calc(var(--lift) * -1cqw)); padding-inline: var(--inset); }
+    .card:hover .card__titlerow { padding-inline: var(--inset); }
+    .card:hover .card__icon { opacity:1; }
+  }
+  .card:focus-visible .card__frame { transform: scale(var(--frame-x), var(--frame-y)); }
+  .card:focus-visible .card__frame .photo { transform: scale(var(--img-x), var(--img-y)); }
+  .card:focus-visible .card__info { transform: translateY(calc(var(--lift) * -1cqw)); padding-inline: var(--inset); }
+  .card:focus-visible .card__icon { opacity:1; }
+
+  .card__info { display:flex; justify-content:space-between; align-items:center; margin-bottom:.8rem;
+                color:var(--muted); font-size:12px; letter-spacing:.02em; text-transform:uppercase;
+                transition: transform var(--dur) var(--ease), padding var(--dur) var(--ease); }
+  .card__titlerow { display:flex; justify-content:space-between; align-items:flex-start; column-gap:.8rem;
+                    transition: padding var(--dur) var(--ease); }
+  .card__titlerow h3 { margin:0; font-size:clamp(19px,2.2cqw + 12px,27px); line-height:1.15; letter-spacing:-.02em; font-weight:500; max-width:88%; }
+  .card__icon { flex-shrink:0; opacity:0; transition: opacity var(--dur) var(--ease); }
+
+  /* stand-in photography, drawn in CSS so the demo needs nothing external */
+  .photo { background:
+      radial-gradient(120% 90% at 20% 10%, rgba(255,255,255,.28), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(0,0,0,.06) 0 22px, rgba(255,255,255,.05) 22px 46px),
+      linear-gradient(135deg, var(--p1), var(--p2)); }
+  .c1 { --p1:#b9bfc4; --p2:#3c4147; }
+  .c2 { --p1:#d8cfc2; --p2:#5d5348; }
+  .c3 { --p1:#c3ccc7; --p2:#39443f; }
+  .c4 { --p1:#cfc6d2; --p2:#463c4e; }
+
+  .measure { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; color:var(--muted);
+             border:1px solid var(--line); background:var(--panel); padding:10px 14px; display:grid; gap:4px; }
+  .measure b { color:var(--fg); font-weight:600; }
+  .ok { color:#1a7f4b; } .bad { color:#b23b3b; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:3; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:104px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:48px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .lock { display:flex; align-items:center; gap:6px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Reciprocal-scale card hover</h1>
+  <span class="meta">cards · hover · motion — trigger: hover a card (or tab to it)</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>The crop tightens. The photograph never moves.</h2>
+  <p class="lede">Hovering scales the frame down to 0.913 × 0.861 and the picture inside up by 1.0953 × 1.1614 — the exact reciprocals. Because the two products are 1, the image stays pixel-identical while its window shrinks, so the card reads as a crop closing in rather than a photo zooming. The caption then rises by a container-relative amount, which keeps the gesture proportional at any card width.</p>
+
+  <div class="grid">
+    <a class="card" href="#" tabindex="0">
+      <div class="card__frame"><div class="photo c1"></div></div>
+      <div class="card__info"><span>Residential</span><span>2024</span><span>Montréal</span></div>
+      <div class="card__titlerow"><h3>A frame that closes in on its own picture</h3><span class="card__icon">↗</span></div>
+    </a>
+    <a class="card" href="#" tabindex="0">
+      <div class="card__frame"><div class="photo c2"></div></div>
+      <div class="card__info"><span>Commercial</span><span>2023</span><span>Québec</span></div>
+      <div class="card__titlerow"><h3>Reciprocal scales, so nothing drifts</h3><span class="card__icon">↗</span></div>
+    </a>
+    <a class="card" href="#" tabindex="0">
+      <div class="card__frame"><div class="photo c3"></div></div>
+      <div class="card__info"><span>Public</span><span>2025</span><span>Laval</span></div>
+      <div class="card__titlerow"><h3>Caption travel measured in container width</h3><span class="card__icon">↗</span></div>
+    </a>
+    <a class="card" href="#" tabindex="0">
+      <div class="card__frame"><div class="photo c4"></div></div>
+      <div class="card__info"><span>Hospitality</span><span>2022</span><span>Gatineau</span></div>
+      <div class="card__titlerow"><h3>Same gesture at every card size</h3><span class="card__icon">↗</span></div>
+    </a>
+  </div>
+
+  <div class="measure" id="measure">measuring…</div>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-fx">frame x</label>
+    <input id="c-fx" type="range" min="700" max="1000" step="1" value="913"><output for="c-fx">0.913</output></div>
+  <div class="ctrl"><label for="c-fy">frame y</label>
+    <input id="c-fy" type="range" min="700" max="1000" step="1" value="861"><output for="c-fy">0.861</output></div>
+  <div class="ctrl"><label for="c-lift">lift</label>
+    <input id="c-lift" type="range" min="0" max="14" step="0.008" value="4.624"><output for="c-lift">4.6cqw</output></div>
+  <div class="ctrl"><label for="c-dur">duration</label>
+    <input id="c-dur" type="range" min="100" max="1400" step="20" value="400" data-var="--dur" data-unit="ms"><output for="c-dur">400ms</output></div>
+  <label class="lock"><input type="checkbox" id="lock" checked> keep image locked</label>
+  <span class="hint">unlock to see what a plain zoom looks like</span>
+</div>
+
+<script>
+const root = document.documentElement;
+const lock = document.getElementById('lock');
+const measure = document.getElementById('measure');
+
+function apply() {
+  const fx = Number(document.getElementById('c-fx').value) / 1000;
+  const fy = Number(document.getElementById('c-fy').value) / 1000;
+  const lift = Number(document.getElementById('c-lift').value);
+  root.style.setProperty('--frame-x', fx);
+  root.style.setProperty('--frame-y', fy);
+  // locked: the picture takes the exact reciprocal, so frame × image = 1
+  root.style.setProperty('--img-x', lock.checked ? 1 / fx : 1);
+  root.style.setProperty('--img-y', lock.checked ? 1 / fy : 1);
+  root.style.setProperty('--lift', lift);
+  document.querySelector('output[for="c-fx"]').textContent = fx.toFixed(3);
+  document.querySelector('output[for="c-fy"]').textContent = fy.toFixed(3);
+  document.querySelector('output[for="c-lift"]').textContent = lift.toFixed(3) + 'cqw';
+  report(fx, fy);
+}
+
+function report(fx, fy) {
+  const ix = lock.checked ? 1 / fx : 1, iy = lock.checked ? 1 / fy : 1;
+  const px = fx * ix, py = fy * iy;
+  const exact = Math.abs(px - 1) < 1e-9 && Math.abs(py - 1) < 1e-9;
+  const card = document.querySelector('.card');
+  const cqw = card ? card.getBoundingClientRect().width / 100 : 0;
+  const lift = Number(document.getElementById('c-lift').value);
+  measure.innerHTML =
+    `frame <b>${fx.toFixed(4)} × ${fy.toFixed(4)}</b> · image <b>${ix.toFixed(4)} × ${iy.toFixed(4)}</b><br>` +
+    `product <b class="${exact ? 'ok' : 'bad'}">${px.toFixed(4)} × ${py.toFixed(4)}</b> ` +
+    (exact ? '— the photograph is untouched' : '— the photograph scales, and the illusion is gone') + '<br>' +
+    `card width <b>${(cqw * 100).toFixed(0)}px</b> → 1cqw = <b>${cqw.toFixed(2)}px</b> → lift = <b>${(lift * cqw).toFixed(1)}px</b>`;
+}
+
+['c-fx', 'c-fy', 'c-lift'].forEach(id => document.getElementById(id).addEventListener('input', apply));
+lock.addEventListener('change', apply);
+addEventListener('resize', apply);
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => {
+    const v = input.value + (input.dataset.unit || '');
+    root.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', go); go();
+});
+
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+apply();
+</script>
+</body>
+</html>

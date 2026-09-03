@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Native dialog slide-over — UI Distiller</title>
+<style>
+  :root {
+    --duration-modal: .6s;
+    --duration-backdrop: .4s;
+    --backdrop-blur: 0px;
+    --panel-width: 42vw;
+    --ease-in: cubic-bezier(.4, .64, .68, 1);
+    --ease-out: cubic-bezier(.4, .64, .68, 1);
+
+    --bg:#fafafa; --fg:#0b0b0c; --muted:#6b6b76; --line:#e2e2dd; --accent:#1b1b1b; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#e6e6e6; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .btn.-solid { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+
+  main { max-width:820px; margin:0 auto; padding:56px 24px 140px; display:grid; gap:22px; }
+  h2 { font-size:clamp(28px,4.6vw,50px); line-height:1.04; letter-spacing:-.035em; margin:0; max-width:18ch; }
+  p { color:var(--muted); max-width:58ch; margin:0; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.92em; background:var(--panel); border:1px solid var(--line); padding:1px 5px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* ---------- the pattern ----------
+     A native <dialog> in the top layer, animated entirely in CSS. The two
+     modern pieces: `transition-behavior: allow-discrete` (so display and
+     overlay can be transitioned, which is what lets the exit animation run
+     at all) and `@starting-style` (which supplies the entry values for an
+     element that did not exist a frame ago). */
+  dialog.slideover {
+    position: fixed; inset: 0; margin: 0;
+    height: 100dvh; max-height: none; max-width: none;
+    width: var(--panel-width); min-width: 320px;
+    padding: 0; border: 0;
+    background: var(--panel); color: var(--fg);
+    overflow-y: auto; overscroll-behavior: contain;
+    box-shadow: 0 0 60px rgba(0,0,0,.14);
+
+    transition:
+      transform var(--duration-modal) var(--ease-in),
+      display var(--duration-modal) allow-discrete,
+      overlay var(--duration-modal) allow-discrete;
+  }
+  /* direction is data, not a separate class per side */
+  dialog.slideover[data-direction="right"] { margin-left: auto;  transform: translateX(100%); }
+  dialog.slideover[data-direction="left"]  { margin-right: auto; transform: translateX(-100%); }
+  dialog.slideover[data-direction="top"]   { width:100%; height:52dvh; margin-bottom:auto; transform: translateY(-100%); }
+  dialog.slideover[data-direction="bottom"]{ width:100%; height:52dvh; margin-top:auto;    transform: translateY(100%); }
+
+  dialog.slideover[open] { transform: none; }
+  @starting-style { dialog.slideover[open] {
+    transform: translateX(100%);
+  } }
+  @starting-style { dialog.slideover[open][data-direction="left"]  { transform: translateX(-100%); } }
+  @starting-style { dialog.slideover[open][data-direction="top"]   { transform: translateY(-100%); } }
+  @starting-style { dialog.slideover[open][data-direction="bottom"]{ transform: translateY(100%); } }
+
+  dialog.slideover::backdrop {
+    background: color-mix(in srgb, #000 40%, transparent);
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    transition:
+      opacity var(--duration-backdrop) var(--ease-out),
+      backdrop-filter var(--duration-backdrop) var(--ease-out),
+      display var(--duration-backdrop) allow-discrete,
+      overlay var(--duration-backdrop) allow-discrete;
+  }
+  dialog.slideover[open]::backdrop { opacity: 1; backdrop-filter: blur(var(--backdrop-blur)); }
+  @starting-style { dialog.slideover[open]::backdrop { opacity: 0; backdrop-filter: blur(0px); } }
+
+  .panel-inner { padding:24px 26px 40px; display:grid; gap:16px; align-content:start; min-height:100%; }
+  .panel-head { display:flex; align-items:center; justify-content:space-between; gap:16px;
+                position:sticky; top:0; background:var(--panel); padding-bottom:12px; border-bottom:1px solid var(--line); }
+  .panel-head h3 { margin:0; font-size:18px; letter-spacing:-.02em; }
+  .line-item { display:grid; grid-template-columns:56px 1fr auto; gap:14px; align-items:center;
+               padding:12px 0; border-bottom:1px solid var(--line); }
+  .thumb { width:56px; height:56px; background:linear-gradient(135deg,#cfd3d6,#7c8085); }
+  .line-item span { color:var(--muted); font-size:13px; }
+  .tall { height:70vh; display:grid; place-items:center; color:var(--muted); font-size:13px; border:1px dashed var(--line); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:2; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:104px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:48px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .unsupported { display:none; border:1px solid var(--line); background:var(--panel); padding:10px 14px; font-size:13px; color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    dialog.slideover, dialog.slideover::backdrop { transition-duration: 1ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Native dialog slide-over</h1>
+  <span class="meta">modal · motion — trigger: open a panel, then Escape or click the backdrop</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>A panel in the top layer that still animates on the way out.</h2>
+  <p>A <code>&lt;dialog&gt;</code> opened with <code>showModal()</code> gets the top layer, the backdrop pseudo-element, focus trapping and Escape for free — but it also disappears the instant it closes, because <code>display</code> and <code>overlay</code> are discrete properties. <code>transition-behavior: allow-discrete</code> makes both transitionable, and <code>@starting-style</code> supplies the values to animate from on entry. No JavaScript is involved in the motion at all.</p>
+  <p class="unsupported" id="unsupported">This browser does not support <code>@starting-style</code> or <code>allow-discrete</code>, so the panel will appear and disappear without motion. Everything else still works.</p>
+
+  <div class="row">
+    <button class="btn -solid" data-open="right">Open from right</button>
+    <button class="btn" data-open="left">from left</button>
+    <button class="btn" data-open="top">from top</button>
+    <button class="btn" data-open="bottom">from bottom</button>
+  </div>
+
+  <p>Direction is an attribute on the dialog, not a separate component: the closed transform and its matching <code>@starting-style</code> are selected by <code>[data-direction]</code>. Timing lives in custom properties, so a page can retune every panel from one place.</p>
+
+  <div class="tall">scroll behind the panel is contained by <code>overscroll-behavior: contain</code></div>
+</main>
+
+<dialog class="slideover" id="panel" data-direction="right">
+  <div class="panel-inner">
+    <div class="panel-head">
+      <h3 id="panelTitle">Panel</h3>
+      <button class="btn" id="close" autofocus>Close</button>
+    </div>
+    <div class="line-item"><span class="thumb"></span><b>Item one</b><span>$—</span></div>
+    <div class="line-item"><span class="thumb"></span><b>Item two</b><span>$—</span></div>
+    <div class="line-item"><span class="thumb"></span><b>Item three</b><span>$—</span></div>
+    <p>Escape closes it, focus is trapped while it is open and returns to the trigger afterwards — all of that is the platform, not this file.</p>
+    <div class="tall">this panel scrolls independently</div>
+  </div>
+</dialog>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-dur">panel</label>
+    <input id="c-dur" type="range" min="100" max="1600" step="50" value="600" data-var="--duration-modal" data-unit="ms"><output for="c-dur">600ms</output></div>
+  <div class="ctrl"><label for="c-bd">backdrop</label>
+    <input id="c-bd" type="range" min="0" max="1200" step="50" value="400" data-var="--duration-backdrop" data-unit="ms"><output for="c-bd">400ms</output></div>
+  <div class="ctrl"><label for="c-blur">backdrop blur</label>
+    <input id="c-blur" type="range" min="0" max="20" step="1" value="0" data-var="--backdrop-blur" data-unit="px"><output for="c-blur">0px</output></div>
+  <div class="ctrl"><label for="c-w">width</label>
+    <input id="c-w" type="range" min="24" max="100" step="2" value="42" data-var="--panel-width" data-unit="vw"><output for="c-w">42vw</output></div>
+  <span class="hint">state: <b id="stateOut">closed</b></span>
+</div>
+
+<script>
+const panel = document.getElementById('panel');
+const stateOut = document.getElementById('stateOut');
+
+document.querySelectorAll('[data-open]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    panel.dataset.direction = btn.dataset.open;
+    document.getElementById('panelTitle').textContent = 'Panel — from ' + btn.dataset.open;
+    panel.showModal();                 // the motion is entirely CSS from here
+    stateOut.textContent = 'open · ' + btn.dataset.open;
+  });
+});
+
+function closePanel() {
+  panel.close();
+  stateOut.textContent = 'closed';     // the close event is queued; do not wait on it for UI state
+}
+document.getElementById('close').addEventListener('click', closePanel);
+panel.addEventListener('close', () => { stateOut.textContent = 'closed'; });
+
+/* click on the backdrop: the dialog element's own box is the panel, so a click
+   whose coordinates fall outside that box came from the backdrop */
+panel.addEventListener('click', e => {
+  const r = panel.getBoundingClientRect();
+  const outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+  if (outside) closePanel();
+});
+
+/* feature note, not a polyfill */
+const supported = CSS.supports('transition-behavior: allow-discrete');
+if (!supported) document.getElementById('unsupported').style.display = 'block';
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const apply = () => {
+    const v = input.value + (input.dataset.unit || '');
+    document.documentElement.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+  };
+  input.addEventListener('input', apply); apply();
+});
+
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+</script>
+</body>
+</html>

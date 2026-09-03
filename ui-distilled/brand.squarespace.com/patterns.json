@@ -1,0 +1,108 @@
+{
+  "site": "https://brand.squarespace.com/",
+  "host": "brand.squarespace.com",
+  "analyzedAt": "2026-09-04",
+  "stats": {
+    "pages": 3,
+    "candidates": 9,
+    "distilled": 4
+  },
+  "patterns": [
+    {
+      "slug": "01-spring-ring-carousel",
+      "number": "01",
+      "name": "Spring ring carousel",
+      "categories": [
+        "3d",
+        "motion",
+        "cards"
+      ],
+      "description": "Panels orbit a tilted 3D ring held by a spring; each card is a full-viewport layout cropped by clip-path that opens by un-cropping rather than growing.",
+      "trigger": "drag / wheel / arrow keys",
+      "difficulty": "Hard",
+      "fidelity": "high",
+      "score": 4.5,
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 3,
+        "interest": 5,
+        "difficulty": 5
+      },
+      "source": "https://brand.squarespace.com/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "02-directional-line-mask",
+      "number": "02",
+      "name": "Directional line mask",
+      "categories": [
+        "typography",
+        "motion",
+        "microinteraction"
+      ],
+      "description": "Masked lines that clip vertically but not horizontally and leave upward past the edge instead of retreating, so a text swap reads as one movement.",
+      "trigger": "text change",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.2,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 2
+      },
+      "source": "https://brand.squarespace.com/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-conditional-difference-header",
+      "number": "03",
+      "name": "Conditional difference header",
+      "categories": [
+        "navigation",
+        "background",
+        "microinteraction"
+      ],
+      "description": "A white header in difference blend that inverts against anything beneath it — and is deliberately switched off over the blurred menu, where the blend fails.",
+      "trigger": "scroll / menu open",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.0,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 3,
+        "difficulty": 1
+      },
+      "source": "https://brand.squarespace.com/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "04-pinned-poster-sequence",
+      "number": "04",
+      "name": "Pinned poster sequence",
+      "categories": [
+        "scroll",
+        "motion",
+        "3d"
+      ],
+      "description": "A sticky stage where one scroll progress value drives two staged animations: a caption converging from both edges, a hold, then a 3D rotation of the poster.",
+      "trigger": "scroll",
+      "difficulty": "Medium",
+      "fidelity": "high",
+      "score": 4.3,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://brand.squarespace.com/color",
+      "needsNetwork": false
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drag-spring 3D object — UI Distiller</title>
+<style>
+  :root {
+    --bg:#e9edef; --fg:#101014; --muted:#6b6b76; --line:#d3d9dc; --accent:#2f2fff; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:5; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:14px 20px; border-bottom:1px solid var(--line); background:var(--bg); }
+  header h1 { font-size:14px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:12px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .hero { position:sticky; top:0; height:100vh; display:grid; place-items:center; }
+  #stage { width:min(62vw, 62vh); aspect-ratio:1; cursor:grab; touch-action:none; }
+  #stage.dragging { cursor:grabbing; }
+  #stage canvas { display:block; width:100%; height:100%; }
+
+  .copy { position:absolute; left:24px; bottom:96px; max-width:34ch; }
+  .copy h2 { font-size:clamp(24px,3vw,38px); letter-spacing:-.03em; line-height:1.05; margin:0 0 8px; }
+  .copy p { color:var(--muted); margin:0; font-size:14px; }
+
+  .spacer-scroll { height:220vh; }
+  .after { padding:0 24px 160px; max-width:640px; margin:0 auto; color:var(--muted); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:6; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:18px; flex-wrap:wrap; align-items:center; padding:10px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:8px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:100px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .fallback { display:none; padding:14px 18px; border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:13px; }
+
+  @media (prefers-reduced-motion: reduce) { .spacer-scroll { height:100vh; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Drag-spring 3D object</h1>
+  <span class="meta">3d · scroll · motion — trigger: drag the object, then scroll</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="hero">
+  <div id="stage" aria-label="Draggable 3D object"></div>
+  <div class="fallback" id="fallback">WebGL or the Three.js CDN is unavailable, so this demo cannot render. Everything else about the pattern is in the README.</div>
+  <div class="copy">
+    <h2>Scroll turns it. Drag tilts it. Let go and it springs back.</h2>
+    <p>Two independent rotation sources are summed each frame: a scroll-scrubbed base angle and a spring-integrated pointer tilt clamped to ±25°.</p>
+  </div>
+</div>
+
+<div class="spacer-scroll"></div>
+<div class="after"><p>The camera is orthographic and its frustum is rebuilt from the container's aspect ratio, so the object keeps its size and never distorts — which is why it can be dropped into any layout slot.</p></div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-stiff">stiffness</label>
+    <input id="c-stiff" type="range" min="10" max="220" step="5" value="80"><output for="c-stiff">80</output></div>
+  <div class="ctrl"><label for="c-damp">damping</label>
+    <input id="c-damp" type="range" min="2" max="40" step="1" value="14"><output for="c-damp">14</output></div>
+  <div class="ctrl"><label for="c-tilt">max tilt</label>
+    <input id="c-tilt" type="range" min="5" max="80" step="1" value="25"><output for="c-tilt">25°</output></div>
+  <div class="ctrl"><label for="c-sens">sensitivity</label>
+    <input id="c-sens" type="range" min="1" max="20" step="1" value="6"><output for="c-sens">0.006</output></div>
+  <span class="hint">scroll rotation <b id="rotOut">0°</b></span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script>
+const CONFIG = {
+  stiffness: 80,      // spring force per radian of error
+  damping: 14,        // velocity damping
+  maxTilt: 25,        // degrees, clamped
+  sensitivity: 0.006, // radians per pixel dragged
+  frustum: 3.2,       // orthographic view height in world units
+  spin: Math.PI,      // base rotation across the scroll range
+};
+
+const stage = document.getElementById('stage');
+const rotOut = document.getElementById('rotOut');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+if (!window.THREE) {
+  document.getElementById('fallback').style.display = 'block';
+  stage.style.display = 'none';
+} else {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -100, 100);
+  camera.position.set(5, 5, 5);
+  camera.lookAt(0, 0, 0);
+
+  const object = new THREE.Group();
+  const mat = () => new THREE.MeshStandardMaterial({ color: 0x2b2f38, roughness: .35, metalness: .55 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), mat());
+  object.add(body);
+  for (const [x, y, z] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(.28, .28, .28),
+      new THREE.MeshStandardMaterial({ color: 0x2f2fff, roughness: .3, metalness: .2 }));
+    fin.position.set(x * .86, y * .86, z * .86);
+    object.add(fin);
+  }
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.32, 1.32, 1.32)),
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .35 }));
+  object.add(edges);
+  object.rotation.order = 'YXZ';
+  scene.add(object);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 6, 4); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x88aaff, 1.4); rim.position.set(-5, -2, -3); scene.add(rim);
+
+  /* orthographic frustum rebuilt from the container aspect — the object
+     keeps its scale in any slot, portrait or landscape */
+  function updateFrustum() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    const aspect = w / h, f = CONFIG.frustum;
+    if (aspect < 1) {
+      camera.left = -f / 2; camera.right = f / 2;
+      camera.top = f / (2 * aspect); camera.bottom = -f / (2 * aspect);
+    } else {
+      camera.left = -f * aspect / 2; camera.right = f * aspect / 2;
+      camera.top = f / 2; camera.bottom = -f / 2;
+    }
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+  }
+  updateFrustum();
+  addEventListener('resize', updateFrustum);
+
+  /* --- pointer drag → target tilt (clamped) --- */
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const target = { x: 0, y: 0 }, current = { x: 0, y: 0 }, velocity = { x: 0, y: 0 }, base = { x: 0, y: 0 };
+  const start = { x: 0, y: 0 };
+  let dragging = false;
+
+  stage.addEventListener('pointerdown', e => {
+    dragging = true;
+    stage.classList.add('dragging');
+    stage.setPointerCapture(e.pointerId);
+    start.x = e.clientX; start.y = e.clientY;
+    base.x = current.x; base.y = current.y;
+    velocity.x = velocity.y = 0;
+  });
+  addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const max = THREE.MathUtils.degToRad(CONFIG.maxTilt);
+    target.x = clamp(base.x + (e.clientY - start.y) * CONFIG.sensitivity, -max, max);
+    target.y = clamp(base.y + (e.clientX - start.x) * CONFIG.sensitivity, -max, max);
+  });
+  const release = () => { dragging = false; stage.classList.remove('dragging'); target.x = 0; target.y = 0; };
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+
+  /* --- scroll scrubs the base rotation --- */
+  let scrollRot = 0;
+  function readScroll() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? clamp(scrollY / max, 0, 1) : 0;
+    scrollRot = p * CONFIG.spin;
+    rotOut.textContent = Math.round(THREE.MathUtils.radToDeg(scrollRot)) + '°';
+  }
+  addEventListener('scroll', readScroll, { passive: true });
+  readScroll();
+
+  /* --- one spring integrator per axis, dt-based --- */
+  let last = 0;
+  (function frame(now = 0) {
+    requestAnimationFrame(frame);
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+
+    for (const axis of ['x', 'y']) {
+      const force = (target[axis] - current[axis]) * CONFIG.stiffness;
+      velocity[axis] += (force - velocity[axis] * CONFIG.damping) * dt;
+      current[axis] += velocity[axis] * dt;
+    }
+
+    object.rotation.y = (reduced ? 0 : scrollRot) + current.y;
+    object.rotation.x = current.x;
+    renderer.render(scene, camera);
+  })();
+}
+
+/* controls */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const apply = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); };
+  el.addEventListener('input', apply); apply();
+};
+bind('c-stiff', v => CONFIG.stiffness = v, v => v);
+bind('c-damp', v => CONFIG.damping = v, v => v);
+bind('c-tilt', v => CONFIG.maxTilt = v, v => v + '°');
+bind('c-sens', v => CONFIG.sensitivity = v / 1000, v => (v / 1000).toFixed(3));
+
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+</script>
+</body>
+</html>

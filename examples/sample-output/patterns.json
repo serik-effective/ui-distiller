@@ -1,0 +1,22 @@
+{
+  "site": "https://example.com",
+  "host": "example.com",
+  "analyzedAt": "2026-09-03",
+  "stats": { "pages": 1, "candidates": 3, "distilled": 1 },
+  "patterns": [
+    {
+      "slug": "01-line-mask-reveal",
+      "number": "01",
+      "name": "Line mask reveal",
+      "categories": ["typography", "motion"],
+      "description": "Each visual line rises out of its own clipping mask, staggered, with line grouping computed at runtime.",
+      "trigger": "page-load",
+      "difficulty": "Medium",
+      "fidelity": "high",
+      "score": 4.0,
+      "scores": { "visual": 4, "originality": 3, "reusability": 5, "interest": 4, "difficulty": 2 },
+      "source": "https://example.com/",
+      "needsNetwork": false
+    }
+  ]
+}

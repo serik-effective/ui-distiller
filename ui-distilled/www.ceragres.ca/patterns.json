@@ -1,0 +1,78 @@
+{
+  "site": "https://www.ceragres.ca/",
+  "host": "www.ceragres.ca",
+  "analyzedAt": "2026-09-03",
+  "stats": { "pages": 3, "candidates": 7, "distilled": 5 },
+  "patterns": [
+    {
+      "slug": "01-pixel-image-reveal",
+      "number": "01",
+      "name": "Pixel image reveal",
+      "categories": ["image-effect", "canvas", "scroll"],
+      "description": "Images enter as 80px blocks and de-pixelate over 2.2s — a canvas downscale drawn back up with smoothing off, plus a blur that fades with the blocks.",
+      "trigger": "intersection",
+      "difficulty": "Medium",
+      "fidelity": "high",
+      "score": 4.8,
+      "scores": { "visual": 5, "originality": 5, "reusability": 4, "interest": 5, "difficulty": 3 },
+      "source": "https://www.ceragres.ca/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "02-dialog-slide-over",
+      "number": "02",
+      "name": "Native dialog slide-over",
+      "categories": ["modal", "motion", "microinteraction"],
+      "description": "A real <dialog> panel animated entirely in CSS with transition-behavior: allow-discrete and @starting-style, its edge chosen by a data attribute.",
+      "trigger": "click",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.7,
+      "scores": { "visual": 4, "originality": 5, "reusability": 5, "interest": 5, "difficulty": 2 },
+      "source": "https://www.ceragres.ca/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-reciprocal-scale-card",
+      "number": "03",
+      "name": "Reciprocal-scale card hover",
+      "categories": ["cards", "hover", "layout"],
+      "description": "The frame scales to 0.913 × 0.861 and the picture to its exact reciprocal, so the crop tightens while the photograph stays pixel-identical.",
+      "trigger": "hover",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.3,
+      "scores": { "visual": 4, "originality": 5, "reusability": 4, "interest": 4, "difficulty": 2 },
+      "source": "https://www.ceragres.ca/projets/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "04-has-dimming-megamenu",
+      "number": "04",
+      "name": ":has() dimming mega menu",
+      "categories": ["menu", "navigation", "hover"],
+      "description": "Hovering one row dims every sibling to 54% through a single :has() selector, draws a hairline, and staggers the sub-list via a --delay custom property.",
+      "trigger": "hover",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.1,
+      "scores": { "visual": 4, "originality": 4, "reusability": 5, "interest": 4, "difficulty": 2 },
+      "source": "https://www.ceragres.ca/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "05-bracket-hover-marks",
+      "number": "05",
+      "name": "Bracket hover marks",
+      "categories": ["microinteraction", "navigation", "typography"],
+      "description": "Two 4px pseudo-elements slide in as [ and ] around a nav label — one border definition rotated 180° to make its own mirror, with no reflow.",
+      "trigger": "hover",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 3.8,
+      "scores": { "visual": 3, "originality": 4, "reusability": 5, "interest": 3, "difficulty": 1 },
+      "source": "https://www.ceragres.ca/",
+      "needsNetwork": false
+    }
+  ]
+}
