@@ -1,0 +1,192 @@
+{
+  "source": "https://github.com/voltagent/awesome-design-md (design-md, MIT)",
+  "license": "MIT",
+  "note": "Anonymised design-system interpretations. Placeholder copy only — not the work of any named company.",
+  "seed": 688,
+  "items": [
+    {
+      "slug": "apple",
+      "name": "Apple",
+      "label": "Cobalt Press",
+      "kind": "Colors",
+      "blurb": "A photography-first interface that turns marketing into a museum gallery.",
+      "notes": [
+        "UI chrome recedes so the product can speak — no decorative gradients, no shadows on chrome, only the one signature drop-shadow under product imagery resting on a surface."
+      ],
+      "palette": [
+        "#0066cc",
+        "#0071e3",
+        "#2997ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Hairlines & Borders"
+      ]
+    },
+    {
+      "slug": "hashicorp",
+      "name": "HashiCorp",
+      "label": "Ink Works",
+      "kind": "Colors",
+      "blurb": "Cards live as charcoal surfaces with 1px translucent gray borders; product showcase cards lift into per-product chromatic gradients.",
+      "notes": [],
+      "palette": [
+        "#000000",
+        "#ffffff",
+        "#2b89ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Per-Product Identity (signature)"
+      ]
+    },
+    {
+      "slug": "clickhouse",
+      "name": "ClickHouse",
+      "label": "Verdant Press",
+      "kind": "Colors",
+      "blurb": "A high-performance database interface anchored on near-pure black canvas with electric yellow as the brand voltage.",
+      "notes": [
+        "The yellow + black pairing (and yellow used scarcely as accent) is the system's signature — brand identity without atmospheric decoration."
+      ],
+      "palette": [
+        "#faff69",
+        "#e6eb52",
+        "#3a3a1f"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic / Accent"
+      ]
+    },
+    {
+      "slug": "ibm",
+      "name": "IBM",
+      "label": "Cobalt Field",
+      "kind": "Colors",
+      "blurb": "Cards live as thin-bordered tiles with no shadow; sections separate via subtle gray rows.",
+      "notes": [
+        "The chrome is square, the typography is light, and the only color in the system is one assertive blue — the result reads as old-world enterprise gravitas reframed for the cloud era.\""
+      ],
+      "palette": [
+        "#0f62fe",
+        "#ffffff",
+        "#161616"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "coinbase",
+      "name": "Coinbase",
+      "label": "Cobalt Practice",
+      "kind": "Colors",
+      "blurb": "An institutional-grade crypto exchange whose marketing surfaces read like a quietly-confident financial-services brand.",
+      "notes": [],
+      "palette": [
+        "#0052ff",
+        "#003ecc",
+        "#a8b8cc"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Hairlines",
+        "Text"
+      ]
+    },
+    {
+      "slug": "composio",
+      "name": "Composio",
+      "label": "Cobalt Works",
+      "kind": "Colors",
+      "blurb": "abcDiatype carries display and body in a single sans family with weights 400-600.",
+      "notes": [
+        "The brand's strongest visual signature is a four-pane terminal-style mockup (a 2×2 grid of dark code/output panels) with a central blue spotlight glow — used as the homepage hero anchor."
+      ],
+      "palette": [
+        "#0007cd",
+        "#0005a3",
+        "#1a26ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Hairlines",
+        "Text"
+      ]
+    },
+    {
+      "slug": "airtable",
+      "name": "Airtable",
+      "label": "Ink Practice",
+      "kind": "Colors",
+      "blurb": "A sober, editorial workflow-software interface anchored on white canvas and dark-ink type, where brand voltage comes from full-bleed signature cards in coral, dark green, peach, and dark navy that punctuate long-scroll explainer pages.",
+      "notes": [],
+      "palette": [
+        "#181d26",
+        "#0d1218",
+        "#333840"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Signature Card Surfaces"
+      ]
+    },
+    {
+      "slug": "framer",
+      "name": "Framer",
+      "label": "Chalk Atlas",
+      "kind": "Colors",
+      "blurb": "The page rhythm is broken by oversized vibrant gradient atmosphere panels — magenta, violet, orange spotlights — that act as living showcase tiles, not decoration.",
+      "notes": [],
+      "palette": [
+        "#ffffff",
+        "#000000",
+        "#0099ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    }
+  ]
+}

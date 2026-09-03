@@ -134,6 +134,8 @@ The agent works autonomously from there: crawl a few representative pages, exerc
 | 6 · Document | Per-pattern README and a site-level REPORT |
 | 7 · Gallery | `gallery.mjs` renders the index from `patterns.json` |
 | 8 · Verify | `verify.mjs` statically, then every demo exercised in a browser — defects fixed before reporting done |
+| 8b · Compare | Reference and demo shot in the same state and diffed with `compare.mjs`; parameters swept until the score stops improving, with the residual recorded in the README |
+| 9 · Technical copy | Optional: one page composing every pattern of the run, with picsum imagery and a design-md content pack |
 
 The count is not fixed. Roughly 5–12 patterns, but three excellent ones beat ten mediocre ones, and padding the count is explicitly forbidden. An ordinary button, a stock navbar or a bare `transition: opacity .2s` is not a pattern.
 
@@ -146,6 +148,9 @@ node scripts/probe.mjs   <url> --out <root>/.work [--pages /a,/b] [--max-asset-k
 node scripts/inspect.mjs <url> --out <root>/.work [--shots] [--hover 24] [--scroll 8] [--verbose]
 node scripts/gallery.mjs <root>
 node scripts/verify.mjs  <root> [--max-file-kb 300]
+node scripts/compare.mjs shoot <url> <out.png> [--viewport 1440x900] [--clip x,y,w,h] [--script "js"]
+node scripts/compare.mjs diff  <a.png> <b.png> [--mode edges|luma|raw]
+node scripts/content.mjs --out <root>/site/content.json [--count 8] [--seed 42]
 ```
 
 **`probe.mjs`** — static pass. Saves HTML, linked and inline CSS/JS, discovers same-origin routes, and emits `probe.json`: library fingerprints (GSAP, Lenis, Three.js, Framer Motion, Barba, Swiper, React/Next/Vue/Nuxt/Svelte/Astro…), CSS feature counts, `@keyframes` and `@font-face` inventories, easings and durations. Falls back to `curl` when Node's `fetch` cannot reach the host.
@@ -157,6 +162,10 @@ node scripts/verify.mjs  <root> [--max-file-kb 300]
 - screenshots, network log, console errors.
 
 Consent overlays are hidden locally by default (they intercept every hover) — nothing is clicked, accepted or stored; `--keep-overlays` disables it.
+
+**`compare.mjs`** — reference capture and comparison. `shoot` grabs a page state at a fixed viewport, optionally after running a snippet to reach that state, with `--clip` to isolate a component and `--hide` to drop consent walls. `diff` compares two PNGs and reports mean difference, RMSE, the share of pixels past a threshold and the worst 8×8 regions, and writes a diff image. Defaults to comparing **edges** rather than raw pixels, because a distilled demo uses placeholder imagery on purpose. This is what turns "recreated" into "measured against the original".
+
+**`content.mjs`** — builds a `content.json` placeholder pack from a random selection of the anonymised DESIGN.md files in [voltagent/awesome-design-md](https://github.com/voltagent/awesome-design-md) (MIT): design-system prose, palettes and type notes instead of lorem ipsum. Every sentence carrying a proper noun is filtered out, display labels are derived from the palette, and the source names appear only in a credit line.
 
 **`gallery.mjs`** — renders the root `index.html` from `patterns.json`.
 

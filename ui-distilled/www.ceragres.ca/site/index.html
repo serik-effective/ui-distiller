@@ -246,11 +246,48 @@
   <span>Images <a href="https://picsum.photos" target="_blank" rel="noreferrer noopener">picsum.photos</a> · text lorem ipsum · links <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a></span>
 </footer>
 
-<div class="notice">technical copy · patterns <b>01–05</b> from the www.ceragres.ca distillation</div>
+<div class="notice">technical copy · patterns <b>01–05</b> from the www.ceragres.ca distillation · <span id="credit">placeholder copy</span></div>
 
 <script>
 const root = document.documentElement;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ═══ content ═══
+   A design-md pack (scripts/content.mjs) replaces the placeholder copy when one
+   sits beside this file: design-system prose and palettes rather than lorem
+   ipsum. Labels are neutral; source names appear only in the credit line. */
+fetch('content.json')
+  .then(r => (r.ok ? r.json() : null))
+  .then(pack => {
+    if (!pack?.items?.length) return;
+    const it = pack.items;
+    const hero = document.querySelector('.hero h1');
+    const lede = document.querySelector('.hero p');
+    if (hero && it[0]) hero.textContent = it[0].label + ' — ' + (it[0].kind || 'Design system');
+    if (lede && it[0]) lede.textContent = it[0].blurb;
+
+    document.querySelectorAll('section h2').forEach((h, i) => {
+      const item = it[(i + 1) % it.length];
+      if (item) h.textContent = item.blurb.split(/[,—]/)[0].slice(0, 70).trim();
+    });
+    document.querySelectorAll('.card').forEach((card, i) => {
+      const item = it[(i + 2) % it.length];
+      if (!item) return;
+      const h3 = card.querySelector('h3');
+      const info = card.querySelectorAll('.card__info span');
+      if (h3) h3.textContent = item.blurb.split(/[,—]/)[0].slice(0, 60).trim();
+      if (info[0]) info[0].textContent = item.kind || 'Design';
+      if (info[2]) info[2].textContent = item.label;
+    });
+    document.querySelectorAll('.lineItem b').forEach((b, i) => {
+      const item = it[(i + 3) % it.length];
+      if (item) b.textContent = item.label;
+    });
+    if (it[0]?.palette?.[0]) root.style.setProperty('--accent', it[0].palette[0]);
+    const credit = document.getElementById('credit');
+    if (credit) credit.textContent = 'copy sampled from design-md (' + it.slice(0, 3).map(x => x.name).join(', ') + ', MIT)';
+  })
+  .catch(() => {});   // no pack is fine
 
 /* ═══ chrome ═══ */
 document.getElementById('themeBtn').addEventListener('click', () => {

@@ -172,7 +172,7 @@
   </main>
 </div>
 
-<div class="notice">technical copy · patterns <b>01–07</b> from the mecha-xyz.webflow.io distillation</div>
+<div class="notice">technical copy · patterns <b>01–07</b> from the mecha-xyz.webflow.io distillation · <span id="credit">placeholder copy</span></div>
 <div class="hint">drag the object · hover links · scroll past the end</div>
 
 <script>
@@ -591,10 +591,39 @@ addEventListener('resize', () => {
   }, 200);
 });
 
-renderView(location.hash && VIEWS[location.hash] ? location.hash : '#/index');
-observeReveals();
-enterAnimation();
+/* A design-md pack (scripts/content.mjs) supplies the placeholder copy when one
+   sits beside this file — design-system prose instead of lorem ipsum. Labels are
+   neutral; the source entry names appear only in the credit line. */
+function applyPack(pack) {
+  if (!pack?.items?.length) return;
+  const items = pack.items;
+  let n = 0;
+  for (const key of Object.keys(VIEWS)) {
+    for (const sec of VIEWS[key].sections) {
+      const it = items[n++ % items.length];
+      sec.name = it.label;
+      sec.h = it.blurb.split(/[,—]/)[0].slice(0, 72).trim();
+      sec.p = it.blurb;
+    }
+  }
+  const credit = document.getElementById('credit');
+  if (credit) credit.textContent = 'copy sampled from design-md (' + items.slice(0, 3).map(i => i.name).join(', ') + ', MIT)';
+}
+
+function boot() {
+  renderView(location.hash && VIEWS[location.hash] ? location.hash : '#/index');
+  observeReveals();
+  enterAnimation();
+}
+
+// The preloader runs on its own clock — it must never be waiting on a fetch,
+// or a slow content pack becomes a page that never opens.
 startPreloader();
+
+fetch('content.json')
+  .then(r => (r.ok ? r.json() : null))
+  .then(pack => { applyPack(pack); boot(); })
+  .catch(() => boot());
 
 window.COPY = { VIEWS, go, update, FALL, OBJ, gates, renderView };
 </script>

@@ -6,11 +6,14 @@
 <title>Perspective conveyor — UI Distiller</title>
 <style>
   :root {
-    --gap: 320px;        /* spacing between cards along the belt, px of virtual scroll */
+    --card-w: 28vw;      /* card width — narrow enough that the belt reads as cards   */
+    --gap: 420px;        /* spacing between cards along the belt, px of virtual scroll */
     --drift: 26;         /* px per second the belt moves with no input at all        */
     --lerp: .09;         /* how quickly the belt catches up to the wheel             */
     --wheel: 1.1;        /* wheel delta multiplier                                   */
-    --bend: 46;          /* degrees of rotateX at the far ends of the arc            */
+    --bend: 52;          /* degrees of rotateX at the far ends of the arc            */
+    --twist: 6;          /* degrees of in-plane rotateZ at the ends — the diagonal   */
+    --sway: 42;          /* px of horizontal drift at the ends                       */
     --depth: 460px;      /* how far back the ends are pushed                         */
     --perspective: 1200px;
 
@@ -41,8 +44,8 @@
      the ends fold away while the middle stays flat and readable. */
   .stage { position:fixed; inset:0; perspective:var(--perspective); overflow:hidden;
            display:grid; place-items:center; cursor:ns-resize; touch-action:none; }
-  .belt { position:relative; width:min(46vw, 620px); height:100%; transform-style:preserve-3d; }
-  .card { position:absolute; left:0; top:50%; width:100%; aspect-ratio:5/4; margin-top:calc(-0.5 * min(46vw,620px) * 0.8);
+  .belt { position:relative; width:min(var(--card-w), 520px); height:100%; transform-style:preserve-3d; }
+  .card { position:absolute; left:0; top:50%; width:100%; aspect-ratio:5/4; margin-top:calc(-0.4 * min(var(--card-w),520px));
           transform-style:preserve-3d; will-change:transform, opacity; }
   .card figure { margin:0; width:100%; height:100%; overflow:hidden; background:var(--line); position:relative; }
   .card img { width:100%; height:100%; object-fit:cover; }
@@ -90,11 +93,15 @@
 
 <div class="controls">
   <div class="ctrl"><label for="c-gap">spacing</label>
-    <input id="c-gap" type="range" min="140" max="620" step="10" value="320"><output for="c-gap">320</output></div>
+    <input id="c-gap" type="range" min="140" max="760" step="10" value="420"><output for="c-gap">420</output></div>
   <div class="ctrl"><label for="c-drift">drift</label>
     <input id="c-drift" type="range" min="0" max="160" step="2" value="26"><output for="c-drift">26</output></div>
   <div class="ctrl"><label for="c-bend">bend</label>
-    <input id="c-bend" type="range" min="0" max="85" step="1" value="46"><output for="c-bend">46°</output></div>
+    <input id="c-bend" type="range" min="0" max="85" step="1" value="52"><output for="c-bend">52°</output></div>
+  <div class="ctrl"><label for="c-twist">twist</label>
+    <input id="c-twist" type="range" min="0" max="20" step="0.5" value="6"><output for="c-twist">6°</output></div>
+  <div class="ctrl"><label for="c-sway">sway</label>
+    <input id="c-sway" type="range" min="0" max="160" step="2" value="42"><output for="c-sway">42</output></div>
   <div class="ctrl"><label for="c-depth">depth</label>
     <input id="c-depth" type="range" min="0" max="1200" step="20" value="460"><output for="c-depth">460</output></div>
   <div class="ctrl"><label for="c-lerp">catch-up</label>
@@ -105,11 +112,13 @@
 
 <script>
 const CONFIG = {
-  gap: 320,        // px of belt per card
+  gap: 420,        // px of belt per card
   drift: 26,       // px/second with no input
   lerp: 0.09,      // approach rate toward the wheel target
   wheel: 1.1,      // wheel delta multiplier
-  bend: 46,        // deg of rotateX at the extremes
+  bend: 52,        // deg of rotateX at the extremes
+  twist: 6,        // deg of rotateZ at the extremes — the in-plane diagonal
+  sway: 42,        // px of horizontal drift at the extremes
   depth: 460,      // px pushed back at the extremes
   fade: true,
 };
@@ -165,11 +174,16 @@ function layout(dt) {
     const half = len / 2;
     const n = Math.max(-1, Math.min(1, d / half));
 
-    // the arc: fold away and recede with distance, flat and forward at the centre
+    // the arc: fold away and recede with distance, flat and forward at the centre.
+    // twist and sway are what stop the belt reading as a rigid column — cards
+    // above and below the centre lean opposite ways and slide slightly apart.
     const rotX = -n * CONFIG.bend;
+    const rotZ = n * CONFIG.twist;
+    const x = n * CONFIG.sway;
     const z = -Math.abs(n) * CONFIG.depth;
     const y = d;
-    el.style.transform = `translate3d(0, ${y.toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${rotX.toFixed(2)}deg)`;
+    el.style.transform =
+      `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${rotX.toFixed(2)}deg) rotateZ(${rotZ.toFixed(2)}deg)`;
     el.style.opacity = CONFIG.fade ? String(Math.max(0, 1 - Math.abs(n) * 1.35).toFixed(3)) : '1';
     el.style.zIndex = String(Math.round(1000 - Math.abs(d)));
 
@@ -198,6 +212,8 @@ const bind = (id, fn, fmt) => {
 bind('c-gap', v => CONFIG.gap = v, v => v);
 bind('c-drift', v => CONFIG.drift = v, v => v);
 bind('c-bend', v => CONFIG.bend = v, v => v + '°');
+bind('c-twist', v => CONFIG.twist = v, v => v + '°');
+bind('c-sway', v => CONFIG.sway = v, v => v);
 bind('c-depth', v => CONFIG.depth = v, v => v);
 bind('c-lerp', v => CONFIG.lerp = v / 100, v => (v / 100).toFixed(2));
 document.getElementById('lineToggle').addEventListener('change', e =>

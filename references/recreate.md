@@ -270,6 +270,24 @@ Animate `transform`, `opacity`, `filter`, `clip-path` only. Batch reads before w
 
 Reduced-motion path in every demo. Keyboard-operable triggers (buttons, not divs). Visible focus. Menus: Escape closes, focus returns to the toggle. Decorative layers `aria-hidden="true"` and `pointer-events: none`.
 
+## Closing the gap against a reference
+
+Building the mechanism gets you most of the way; the last stretch is measurement. The loop:
+
+1. Shoot the original's state once, clipped to the component (`compare.mjs shoot … --clip`).
+2. Shoot the demo in the same state, same viewport, same clip.
+3. `compare.mjs diff … --mode edges` for a number and a map of where the difference sits.
+4. Change **one** parameter, re-shoot, re-score. Keep what improves.
+5. Stop when two rounds in a row fail to beat the best honest score.
+
+Practical notes learned the hard way:
+
+- **Freeze ambient motion first.** Anything that drifts, autoplays or springs must be pinned before shooting, or successive frames differ from each other more than the demo differs from the original.
+- **Sweep through the demo's own seam.** Every demo here exposes its config on `window`; `--script` can set values and step the loop, so a sweep is a shell loop rather than a series of edits.
+- **Guard the density.** A lower difference from a sparser screen is not a better recreation. If a variant reduces how much is visible, reject it however good the number looks.
+- **Character before geometry.** In one run the metric barely moved for bend and depth, but adding an in-plane `rotateZ` and a small horizontal drift — which the original obviously had and the demo lacked — was what actually made it read correctly. The number is a check on your eye, not a replacement for it.
+- **Record the residual.** Put the final score in the README next to the fidelity claim. "Fidelity: approximate, edges meanAbs 8.9 against the reference frame" is a far more useful statement than "close enough".
+
 ## Fidelity honesty
 
 `Fidelity: high` — mechanism confidently identified and reproduced; timing measured, not guessed.

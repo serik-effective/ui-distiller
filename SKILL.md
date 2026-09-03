@@ -141,6 +141,16 @@ For each selected pattern, write down before coding:
 - **Composition** — the DOM layers involved and their stacking/overflow/containing-block relationships.
 - **Details that make it good** — overshoot, stagger, easing asymmetry, masking, blur, perspective, opacity sequencing, layered parallax, pointer interpolation (lerp), scroll smoothing, typography, spacing.
 
+**Capture reference frames now, while the original is open.** For each selected pattern, shoot the states you intend to reproduce — at rest, mid-effect, settled — at a fixed viewport, and keep them in `.work/refs/`:
+
+```bash
+node scripts/compare.mjs shoot <url> <root>/.work/refs/NN-name-original.png \
+  --viewport 1440x900 --wait 4000 --clip 400,0,660,900 \
+  --script "<js that puts the page into the state>" --hide ".cky-overlay,#onetrust-consent-sdk"
+```
+
+`--clip` matters: compare the component, not the page. `--script` reaches states a screenshot alone cannot, and `--hide` drops consent walls without accepting them. Without these frames the recreation has nothing to be checked against, and Stage 8 degenerates into "it looks about right".
+
 Measurement snippets: `references/acquire.md`. Mechanism cookbook: `references/recreate.md`.
 
 ## Stage 5 — Recreate
@@ -207,11 +217,46 @@ Fix everything found before reporting completion. Batch browser steps with `brow
 
 Serving the output over a local static server (`preview_start`) gives a real viewport and is worth doing before blaming the demo.
 
+### 8b — Compare against the reference, then close the gap
+
+A demo that runs is not yet a demo that matches. For every pattern with a reference frame, shoot the same state from the demo at the same viewport and clip, and diff them:
+
+```bash
+node scripts/compare.mjs shoot <demo-url> <root>/.work/refs/NN-name-demo.png \
+  --viewport 1440x900 --clip 400,0,660,900 --script "<same state>"
+node scripts/compare.mjs diff <root>/.work/refs/NN-name-original.png \
+                              <root>/.work/refs/NN-name-demo.png --mode edges
+```
+
+`edges` is the default because a distilled demo uses placeholder imagery on purpose — a raw pixel diff would mostly measure the photographs. Edge comparison asks the question that matters: are the shapes the same size, in the same place, at the same angle?
+
+Read the output as direction, not as a grade:
+
+- `meanAbs` under ~4 is very close, under ~9 is worth one more pass, above ~18 means something structural is wrong.
+- `worstCells` names the 8×8 regions that disagree, which usually points straight at the offending property.
+
+Then tune. Expose the pattern's parameters on `window` (every demo here already does), drive them from `--script`, and sweep:
+
+```bash
+--script "BELT.CONFIG.drift=0; BELT.CONFIG.gap=460; for(let i=0;i<90;i++)BELT.layout(1/60)"
+```
+
+Freeze anything ambient first — set the drift to zero, pin the phase — or you will be comparing two different moments and reading the noise as signal.
+
+**The trap: a lower score is not automatically a better recreation.** An emptier screen matches an emptier screen. During one real run the metric fell from 10.1 to 6.7 purely because wider spacing pushed cards off-screen — the number improved while the recreation got worse. Always look at the candidate shot before accepting a win, and reject any variant that changes how much is on screen. Stop when two consecutive rounds fail to improve the best honest score, and record the final number in the pattern's README as evidence rather than claiming a match.
+
 ## Stage 9 — Technical copy (optional)
 
 When asked for a working site rather than a set of experiments, add `site/index.html` to the run: one page that composes **every** distilled pattern into a single coherent layout. It is a demonstration of the patterns working together, not a reproduction of the original.
 
-- Placeholder content only: images from `https://picsum.photos/seed/<name>/<w>/<h>`, lorem ipsum copy, and a neutral third-party link target for the brand and nav.
+- Placeholder content only: images from `https://picsum.photos/seed/<name>/<w>/<h>`, and copy from a design-md pack:
+
+  ```bash
+  node scripts/content.mjs --out <root>/site/content.json --count 8
+  ```
+
+  That pulls a random selection from the anonymised DESIGN.md collection at [voltagent/awesome-design-md](https://github.com/voltagent/awesome-design-md) (MIT) — real design-system prose, palettes and type notes, which read far better on a design page than lorem ipsum. The page fetches `content.json` and falls back to its built-in copy when the file is absent, so it still opens offline.
+- The pack's `label` is a neutral name derived from its palette; the source entry names belong **only** in a credit line. A page listing real companies as its projects is claiming a client list it does not have. `content.mjs` filters out every sentence carrying a proper noun or the entry's own slug — audit the rendered copy, not just the pack.
 - No logos, names, colours-as-identity, or copy from the source site. The page must not read as that company's site.
 - Every pattern keeps its own parameters, and patterns that could fight each other must be reconciled explicitly — a page-transition transform and an overscroll transform on the same wrapper need one owner.
 - Anything that can strand the page (a preloader gated on several conditions) needs a hard safety timeout.
@@ -256,6 +301,8 @@ Clone the site · make pixel-perfect page copies · copy content or branding · 
 | `references/templates.md` | README, REPORT, and `patterns.json` templates |
 | `references/harnesses.md` | Tool names per harness, and what to do without browser tools |
 | `assets/demo-template.html` | Starting point for every demo |
+| `scripts/compare.mjs` | Reference capture and screenshot comparison (Stage 4 and 8b) |
+| `scripts/content.mjs` | Design-md content packs for a technical copy (Stage 9) |
 | `examples/sample-output/` | One finished pattern end to end — the quality bar for demo, README, report, and gallery |
 
 If neither browser tools nor a browser engine for `inspect.mjs` are available, run the static pass alone, say plainly in the report that behavioural analysis was limited, and distil only what static evidence supports.

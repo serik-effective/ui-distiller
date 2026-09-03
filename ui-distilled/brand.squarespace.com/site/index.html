@@ -178,7 +178,7 @@
   <span>Images <a href="https://picsum.photos" target="_blank" rel="noreferrer noopener">picsum.photos</a> · text lorem ipsum · links <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a></span>
 </footer>
 
-<div class="notice">technical copy · patterns <b>01–04</b> from the brand.squarespace.com distillation</div>
+<div class="notice">technical copy · patterns <b>01–04</b> from the brand.squarespace.com distillation · <span id="credit">placeholder copy</span></div>
 
 <script>
 /* ═══ shared helpers ═══ */
@@ -216,7 +216,15 @@ function splitLines(el) {
 }
 const revealBlocks = [...document.querySelectorAll('[data-reveal]')];
 function buildReveals() { for (const b of revealBlocks) b.querySelectorAll('.revealTarget').forEach(splitLines); }
-buildReveals();
+
+fetch('content.json')
+  .then(r => (r.ok ? r.json() : null))
+  .then(pack => {
+    applyPack(pack);
+    items.forEach((it, i) => { const cap = it.inner.querySelector('figcaption'); if (cap) cap.textContent = SLIDES[i].cap; });
+    buildReveals();
+  })
+  .catch(() => buildReveals());   // no pack is fine — the built-ins stand
 
 const io = new IntersectionObserver(entries => {
   for (const e of entries) {
@@ -236,6 +244,30 @@ const hero = document.getElementById('hero');
 const ringEl = document.getElementById('ring');
 const heroCap = document.getElementById('heroCap');
 const heroIdx = document.getElementById('heroIdx');
+
+/* Placeholder copy comes from a design-md pack when one sits beside this file
+   (scripts/content.mjs) — design-system prose and palettes instead of lorem
+   ipsum. Labels are neutral by construction; source names appear only in the
+   credit line. */
+function applyPack(pack) {
+  if (!pack || !Array.isArray(pack.items) || !pack.items.length) return;
+  pack.items.slice(0, SLIDES.length).forEach((it, i) => { SLIDES[i].cap = it.label || SLIDES[i].cap; });
+  const blocks = [...document.querySelectorAll('[data-reveal]')];
+  pack.items.slice(0, blocks.length).forEach((it, i) => {
+    const h = blocks[i].querySelector('h2.revealTarget');
+    const p2 = blocks[i].querySelector('p.revealTarget');
+    if (h && it.label) h.textContent = it.kind ? `${it.kind} — ${it.label}` : it.label;
+    if (p2 && it.blurb) p2.textContent = it.blurb;
+  });
+  const seq = document.getElementById('seqCopy');
+  const first = pack.items[0];
+  if (seq && first) {
+    seq.querySelector('h2').textContent = first.label;
+    seq.querySelector('p').textContent = first.blurb;
+  }
+  const credit = document.getElementById('credit');
+  if (credit) credit.textContent = 'copy sampled from design-md (' + pack.items.slice(0, 3).map(i => i.name).join(', ') + ', MIT)';
+}
 
 const items = SLIDES.map((s, i) => {
   const el = document.createElement('div');

@@ -45,9 +45,17 @@ Spacing, drift, bend, depth and catch-up are all live controls, and a centre lin
 
 ## Fidelity
 
-approximate
+approximate — edges `meanAbs 8.9` against the reference frame
 
 The original renders its cards in WebGL, so the exact warp is a shader on a curved mesh. This demo reproduces the behaviour — continuous drift, wheel-added velocity, flat centre, folding ends — with CSS 3D transforms. Motion, timing and layering match; the per-pixel bend of the original does not.
+
+Measured rather than asserted. `.work/refs/` holds the reference frame (the original at 1440×900, clipped to the card column at `400,0,660,900`) and the candidate shot from this demo in the same state. The first build scored `meanAbs 10.1`; adding the in-plane `twist` and horizontal `sway` the original clearly had, and narrowing the cards from 34vw to 28vw with wider spacing, brought it to **8.9** at the same on-screen density.
+
+A note on the number: wider spacing alone reached 6.7, but only by pushing cards off-screen — an emptier canvas matches an emptier canvas. That variant was rejected, and the honest 8.9 kept. Reproduce with:
+
+```bash
+node scripts/compare.mjs diff .work/refs/col-original.png .work/refs/col-v2.png --mode edges
+```
 
 ## Difficulty
 

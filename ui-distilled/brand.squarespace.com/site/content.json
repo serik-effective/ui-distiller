@@ -1,0 +1,195 @@
+{
+  "source": "https://github.com/voltagent/awesome-design-md (design-md, MIT)",
+  "license": "MIT",
+  "note": "Anonymised design-system interpretations. Placeholder copy only — not the work of any named company.",
+  "seed": 641,
+  "items": [
+    {
+      "slug": "replicate",
+      "name": "Replicate",
+      "label": "Ember Works",
+      "kind": "Colors",
+      "blurb": "The system reads as \"AI lab notebook crossed with print magazine\": cream and bone surfaces, dark ink type, monospace code wells, irregular hand-drawn-feeling diagrams, and a rich orange used scarcely on the most consequential CTA.",
+      "notes": [],
+      "palette": [
+        "#ea2804",
+        "#c01f00",
+        "#ffffff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "ferrari",
+      "name": "Ferrari",
+      "label": "Ember Studio",
+      "kind": "Colors",
+      "blurb": "A luxury-automotive brand whose marketing surfaces read as cinematic editorial.",
+      "notes": [
+        "The brand's strongest visual signature is the **full-bleed cinematic hero photograph** that fills the viewport top with car photography, model details, or trackside livery — followed by a tighter editorial body layout below."
+      ],
+      "palette": [
+        "#da291c",
+        "#b01e0a",
+        "#9d2211"
+      ],
+      "font": "FerrariSans across every te",
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Hairlines",
+        "Text"
+      ]
+    },
+    {
+      "slug": "composio",
+      "name": "Composio",
+      "label": "Cobalt Works",
+      "kind": "Colors",
+      "blurb": "abcDiatype carries display and body in a single sans family with weights 400-600.",
+      "notes": [
+        "The brand's strongest visual signature is a four-pane terminal-style mockup (a 2×2 grid of dark code/output panels) with a central blue spotlight glow — used as the homepage hero anchor."
+      ],
+      "palette": [
+        "#0007cd",
+        "#0005a3",
+        "#1a26ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Hairlines",
+        "Text"
+      ]
+    },
+    {
+      "slug": "playstation",
+      "name": "PlayStation",
+      "label": "Cobalt Field",
+      "kind": "Colors",
+      "blurb": "The system never decorates — no gradient backgrounds on chrome, no atmospheric mesh, no drop shadows beyond a faint section-divide.",
+      "notes": [],
+      "palette": [
+        "#0070d1",
+        "#0064b7",
+        "#004d8d"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "shopify",
+      "name": "Shopifi",
+      "label": "Ink Press",
+      "kind": "Colors",
+      "blurb": "a cinematic commerce platform that runs two parallel design tracks.",
+      "notes": [],
+      "palette": [
+        "#000000",
+        "#ffffff",
+        "#0a0a0a"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Shade Ladder",
+        "Text"
+      ]
+    },
+    {
+      "slug": "slack",
+      "name": "Slacc",
+      "label": "Violet Method",
+      "kind": "Colors",
+      "blurb": "a workplace messaging brand built on a deep aubergine primary, with cream-lavender hero gradients, blue inline links, and pill CTAs.",
+      "notes": [
+        "The system pairs a proprietary humanist sans for display with a separate utility sans for body, and stages product UI mockups inside soft pastel-mesh hero composites that act as both decoration and feature explanation."
+      ],
+      "palette": [
+        "#4a154b",
+        "#481a54",
+        "#611f69"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "linear.app",
+      "name": "Linear",
+      "label": "Cobalt Press",
+      "kind": "Colors",
+      "blurb": "The system reads as software-craft documentation: dense, technical, and quietly luxurious.",
+      "notes": [
+        "Cards live as charcoal panels (#0f1011) with hairline borders.",
+        "The accent lavender appears on the brand mark, focus rings, and a few intentional CTAs — never decoratively."
+      ],
+      "palette": [
+        "#5e6ad2",
+        "#ffffff",
+        "#828fff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "apple",
+      "name": "Apple",
+      "label": "Cobalt Studio",
+      "kind": "Colors",
+      "blurb": "A photography-first interface that turns marketing into a museum gallery.",
+      "notes": [
+        "UI chrome recedes so the product can speak — no decorative gradients, no shadows on chrome, only the one signature drop-shadow under product imagery resting on a surface."
+      ],
+      "palette": [
+        "#0066cc",
+        "#0071e3",
+        "#2997ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Hairlines & Borders"
+      ]
+    }
+  ]
+}

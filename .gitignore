@@ -5,6 +5,12 @@ ui-distilled/*/.work/raw/
 ui-distilled/*/.work/**/raw/
 ui-distilled/*/.work/shots/
 ui-distilled/*/.work/**/shots/
+
+# Reference frames ARE kept: they are the evidence behind every fidelity claim.
+# Scratch comparison output is not.
+ui-distilled/*/.work/refs/tmp*.png
+ui-distilled/*/.work/refs/*.diff.png
+ui-distilled/*/.work/refs/cand-*.png
 ui-distilled/*/.work/*.json
 ui-distilled/*/.work/*/*.json
 

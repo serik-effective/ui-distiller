@@ -116,7 +116,7 @@
 
 <div class="palette" id="palette"><i></i><i></i><i></i></div>
 
-<div class="notice">technical copy · patterns <b>01–03</b> from the huyml.co distillation</div>
+<div class="notice">technical copy · patterns <b>01–03</b> from the huyml.co distillation · <span id="credit">placeholder copy</span></div>
 
 <script>
 const CONFIG = {
@@ -140,23 +140,44 @@ const root = document.documentElement;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 document.getElementById('total').textContent = String(PROJECTS.length).padStart(2, '0');
 
-/* ── build ── */
+/* ── content ──
+   Placeholder copy comes from a design-md pack (scripts/content.mjs) when one
+   sits beside this file: real design-system prose and palettes rather than
+   lorem ipsum. The labels in the pack are neutral by construction — the source
+   entry names are only ever used in the credit line. */
 const belt = document.getElementById('belt');
 const track = document.getElementById('track');
-belt.innerHTML = PROJECTS.map((_, i) =>
-  `<div class="card"><figure><img src="https://picsum.photos/seed/huy-copy-${i + 1}/900/720" alt=""></figure></div>`).join('');
-track.innerHTML = PROJECTS.map(p => `
-  <article class="entry">
-    <span class="kind">${p.kind}</span>
-    <h2>${p.name}</h2><span class="rule"></span>
-    <p>${p.copy}</p>
-  </article>`).join('');
-const cards = [...belt.querySelectorAll('.card')];
-const entries = [...track.querySelectorAll('.entry')];
+let cards = [], entries = [];
 const swatches = [...document.querySelectorAll('#palette i')];
 
+function applyPack(pack) {
+  if (!pack || !Array.isArray(pack.items) || !pack.items.length) return;
+  pack.items.slice(0, PROJECTS.length).forEach((it, i) => {
+    PROJECTS[i].name = it.label || PROJECTS[i].name;
+    PROJECTS[i].kind = it.kind || PROJECTS[i].kind;
+    PROJECTS[i].copy = it.blurb || PROJECTS[i].copy;
+    if (Array.isArray(it.palette) && it.palette.length === 3) PROJECTS[i].palette = it.palette;
+  });
+  const credit = document.getElementById('credit');
+  if (credit) credit.textContent = 'copy sampled from design-md (' + pack.items.slice(0, 3).map(i => i.name).join(', ') + ', MIT)';
+}
+
+function build() {
+  belt.innerHTML = PROJECTS.map((_, i) =>
+    `<div class="card"><figure><img src="https://picsum.photos/seed/huy-copy-${i + 1}/900/720" alt=""></figure></div>`).join('');
+  track.innerHTML = PROJECTS.map(p => `
+    <article class="entry">
+      <span class="kind">${p.kind}</span>
+      <h2>${p.name}</h2><span class="rule"></span>
+      <p>${p.copy}</p>
+    </article>`).join('');
+  cards = [...belt.querySelectorAll('.card')];
+  entries = [...track.querySelectorAll('.entry')];
+  shown = -1;
+}
+
 /* ── one shared belt position ── */
-let pos = 0, target = 0;
+let pos = 0, target = 0, shown = -1;
 const stage = document.getElementById('stage');
 addEventListener('wheel', e => { target += e.deltaY; }, { passive: true });
 let dragging = false, lastY = 0;
@@ -185,7 +206,6 @@ function roll(el, text, delay = 0) {
   };
   delay ? setTimeout(run, delay) : run();
 }
-let shown = -1;
 function showProject(i) {
   if (i === shown) return;
   shown = i;
@@ -229,12 +249,20 @@ function frameStep(dt) {
 }
 
 let last = 0;
-(function loop(now = 0) {
-  requestAnimationFrame(loop);
-  const dt = Math.min((now - last) / 1000, .05);
-  last = now;
-  frameStep(dt);
-})();
+function start() {
+  build();
+  (function loop(now = 0) {
+    requestAnimationFrame(loop);
+    const dt = Math.min((now - last) / 1000, .05);
+    last = now;
+    frameStep(dt);
+  })();
+}
+
+fetch('content.json')
+  .then(r => (r.ok ? r.json() : null))
+  .then(pack => { applyPack(pack); start(); })
+  .catch(() => start());          // a missing pack is not an error — the built-ins stand
 
 window.COPY = { CONFIG, frameStep, PROJECTS, get pos() { return pos; }, get shown() { return shown; } };
 </script>
