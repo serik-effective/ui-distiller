@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index — technical copy</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --gap:300px; --drift:24; --lerp:.09; --bend:44; --depth:440px; --perspective:1200px;
+    --ghost:.24; --fade:.45s; --window:.5;
+    --swap-out:180ms; --swap-in:420ms; --stagger:60ms;
+    --ease-out:cubic-bezier(.22,1,.36,1); --ease-in:cubic-bezier(.55,.06,.68,.19);
+
+    --bg:#efeeea; --fg:#12120f; --muted:#7a786f; --line:#dcdad2; --accent:#ff6542; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0e0e0d; --fg:#f2f1ec; --muted:#8b897f; --line:#26251f; --accent:#ff6542; --panel:#161613; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 13px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+
+  /* chrome pinned to the corners, centre left to the work */
+  .chrome { position:fixed; inset:0; z-index:14; pointer-events:none; }
+  .chrome > * { position:absolute; pointer-events:auto; }
+  .brand { left:20px; top:18px; font-weight:600; letter-spacing:-.02em; font-size:15px; }
+  .brand small { display:block; color:var(--muted); font-size:10px; letter-spacing:.06em; font-weight:400; margin-top:3px; }
+  .nav { left:180px; top:18px; display:grid; gap:1px; font-size:13px; letter-spacing:-.01em; text-transform:uppercase; }
+  .nav a { display:flex; gap:8px; align-items:baseline; color:var(--muted); transition:color .3s var(--ease-out); }
+  .nav a[aria-current] { color:var(--fg); }
+  .nav a[aria-current]::before { content:"→"; }
+  .nav a:not([aria-current])::before { content:""; width:12px; }
+  .nav a:hover { color:var(--fg); }
+  .contact { right:20px; top:18px; font-size:11px; color:var(--muted); }
+  .contact a { border-bottom:1px solid var(--line); color:var(--fg); }
+  .scrollHint { left:20px; bottom:18px; font-size:11px; color:var(--muted); }
+  .reel { right:20px; bottom:18px; font-size:11px; color:var(--muted); display:flex; gap:8px; align-items:center; }
+
+  /* ── pattern 01 · perspective conveyor ── */
+  .stage { position:fixed; inset:0; perspective:var(--perspective); display:grid; place-items:center;
+           cursor:ns-resize; touch-action:none; }
+  .belt { position:relative; width:min(38vw,520px); height:100%; transform-style:preserve-3d; }
+  .card { position:absolute; left:0; top:50%; width:100%; aspect-ratio:5/4; margin-top:calc(-0.4 * min(38vw,520px));
+          transform-style:preserve-3d; will-change:transform, opacity; }
+  .card figure { margin:0; width:100%; height:100%; overflow:hidden; background:var(--line); }
+  .card img { width:100%; height:100%; object-fit:cover; }
+
+  /* ── pattern 03 · synced readouts ── */
+  .counter { position:fixed; left:20px; bottom:64px; z-index:10; display:flex; align-items:baseline; gap:6px; }
+  .counter .big { font-size:clamp(52px,8vw,120px); line-height:.8; letter-spacing:-.05em; font-weight:600; }
+  .counter .total { color:var(--muted); font-size:12px; }
+  .meta { position:fixed; left:20px; top:44%; z-index:10; display:grid; gap:12px; width:230px; }
+  .meta .row { display:grid; grid-template-columns:66px 1fr; gap:10px; font-size:11.5px; }
+  .meta .k { color:var(--muted); }
+  .palette { position:fixed; right:20px; bottom:64px; z-index:10; display:flex; gap:5px; }
+  .palette i { width:16px; height:16px; display:block; transition:background-color var(--swap-in) var(--ease-out); }
+  .roll { display:block; overflow:hidden; }
+  .roll > span { display:block; transition:transform var(--swap-in) var(--ease-out), opacity var(--swap-in) linear; }
+  .roll.leaving > span { transform:translateY(-100%); opacity:0;
+                         transition:transform var(--swap-out) var(--ease-in), opacity var(--swap-out) linear; }
+  .roll.entering > span { transform:translateY(100%); opacity:0; transition:none; }
+
+  /* ── pattern 02 · ghost list ── */
+  .column { position:fixed; right:0; top:0; width:min(34vw,430px); height:100%; overflow:hidden; z-index:9; }
+  .track { position:absolute; left:0; top:0; width:100%; will-change:transform; }
+  .entry { padding:0 26px; height:168px; display:grid; align-content:center; gap:5px; text-align:right;
+           opacity:var(--ghost); transition:opacity var(--fade) var(--ease-out); }
+  .entry.on { opacity:1; }
+  .entry .kind { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .entry h2 { margin:0; font-size:clamp(17px,1.9vw,24px); letter-spacing:-.02em; font-weight:500; text-transform:uppercase; }
+  .entry .rule { width:20px; height:1px; background:currentColor; opacity:.5; justify-self:end; }
+  .entry p { margin:0; color:var(--muted); font-size:12px; max-width:36ch; justify-self:end; }
+
+  .notice { position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:20; font-size:10.5px;
+            color:var(--muted); background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 11px; }
+  .notice b { color:var(--fg); font-weight:500; }
+
+  @media (max-width:900px) { .column, .meta { display:none; } }
+  @media (prefers-reduced-motion: reduce) { .entry, .roll > span { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage"><div class="belt" id="belt"></div></div>
+
+<div class="column"><div class="track" id="track"></div></div>
+
+<div class="chrome">
+  <div class="brand">
+    <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a>
+    <small>lorem ipsum · hcmc</small>
+  </div>
+  <nav class="nav">
+    <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener" aria-current="page">Work</a>
+    <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">About</a>
+    <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">Playground</a>
+    <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">Contact</a>
+  </nav>
+  <div class="contact">For inquiries <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">hello@designmd.co</a></div>
+  <div class="scrollHint">Scroll — the belt drifts on its own</div>
+  <div class="reel"><span>'26 showreel</span><span>▶</span></div>
+</div>
+
+<div class="counter">
+  <span class="big roll" id="rCount"><span>01</span></span>
+  <span class="total">/ <span id="total">08</span></span>
+</div>
+
+<div class="meta">
+  <div class="row"><span class="k">Role</span><span class="roll" id="rRole"><span>—</span></span></div>
+  <div class="row"><span class="k">Launch</span><span class="roll" id="rLaunch"><span>—</span></span></div>
+  <div class="row"><span class="k">Award</span><span class="roll" id="rAward"><span>—</span></span></div>
+</div>
+
+<div class="palette" id="palette"><i></i><i></i><i></i></div>
+
+<div class="notice">technical copy · patterns <b>01–03</b> from the huyml.co distillation</div>
+
+<script>
+const CONFIG = {
+  gap: 300, drift: 24, lerp: 0.09, bend: 44, depth: 440,   // conveyor
+  ghostWindow: 0.5,                                        // ghost list
+  stagger: 60,                                             // readouts
+};
+
+const PROJECTS = [
+  { kind: 'Agency & Studio', name: 'Alpha Works',   role: 'Art Director',     launch: 'Nov 2024', award: 'Site of the Day',   palette: ['#ff6542','#f4f2ed','#1c1c1a'], copy: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.' },
+  { kind: 'Corporate',       name: 'Bravo Systems', role: 'Design Direction', launch: 'Feb 2025', award: 'Website of the Day', palette: ['#2b4c7e','#e8eef6','#0d1b2a'], copy: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip.' },
+  { kind: 'Photography',     name: 'Charlie Field', role: 'Website Design',   launch: 'Jul 2024', award: 'Honourable Mention', palette: ['#8a8f7a','#f0efe6','#2a2c24'], copy: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat.' },
+  { kind: 'Blockchain',      name: 'Delta Network', role: 'Art Direction',    launch: 'Mar 2025', award: 'Site of the Month',  palette: ['#6b4ce6','#efeafd','#150f2b'], copy: 'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt.' },
+  { kind: 'Portfolio',       name: 'Echo Vol. I',   role: 'Design & Build',   launch: 'Sep 2023', award: 'Nominee',            palette: ['#d9a441','#fbf3e2','#2b2113'], copy: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque.' },
+  { kind: 'Editorial',       name: 'Foxtrot Press', role: 'Design Direction', launch: 'Jan 2026', award: 'Site of the Day',    palette: ['#c2453f','#f7ece9','#241110'], copy: 'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit sed quia.' },
+  { kind: 'Product',         name: 'Golf Interface',role: 'Product Design',   launch: 'May 2025', award: 'Developer Award',    palette: ['#2f7d6a','#e6f3ef','#0f231e'], copy: 'Neque porro quisquam est qui dolorem ipsum quia dolor sit amet consectetur adipisci.' },
+  { kind: 'Identity',        name: 'Hotel Brand',   role: 'Brand & Web',      launch: 'Aug 2024', award: 'Website of the Day', palette: ['#3d3d3d','#efefef','#0a0a0a'], copy: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium.' },
+];
+
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.getElementById('total').textContent = String(PROJECTS.length).padStart(2, '0');
+
+/* ── build ── */
+const belt = document.getElementById('belt');
+const track = document.getElementById('track');
+belt.innerHTML = PROJECTS.map((_, i) =>
+  `<div class="card"><figure><img src="https://picsum.photos/seed/huy-copy-${i + 1}/900/720" alt=""></figure></div>`).join('');
+track.innerHTML = PROJECTS.map(p => `
+  <article class="entry">
+    <span class="kind">${p.kind}</span>
+    <h2>${p.name}</h2><span class="rule"></span>
+    <p>${p.copy}</p>
+  </article>`).join('');
+const cards = [...belt.querySelectorAll('.card')];
+const entries = [...track.querySelectorAll('.entry')];
+const swatches = [...document.querySelectorAll('#palette i')];
+
+/* ── one shared belt position ── */
+let pos = 0, target = 0;
+const stage = document.getElementById('stage');
+addEventListener('wheel', e => { target += e.deltaY; }, { passive: true });
+let dragging = false, lastY = 0;
+stage.addEventListener('pointerdown', e => { dragging = true; lastY = e.clientY; stage.setPointerCapture(e.pointerId); });
+addEventListener('pointermove', e => { if (dragging) { target -= (e.clientY - lastY) * 2; lastY = e.clientY; } });
+addEventListener('pointerup', () => { dragging = false; });
+
+/* ── pattern 03 · rolling readouts, staggered ── */
+function msOf(name) {
+  const v = getComputedStyle(root).getPropertyValue(name).trim();
+  return v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000;   // unit matters
+}
+function roll(el, text, delay = 0) {
+  const inner = el.firstElementChild;
+  if (inner.textContent === text) return;
+  const run = () => {
+    if (reduced) { inner.textContent = text; return; }
+    el.classList.add('leaving');
+    setTimeout(() => {
+      inner.textContent = text;
+      el.classList.remove('leaving');
+      el.classList.add('entering');
+      void el.offsetWidth;
+      el.classList.remove('entering');
+    }, msOf('--swap-out'));
+  };
+  delay ? setTimeout(run, delay) : run();
+}
+let shown = -1;
+function showProject(i) {
+  if (i === shown) return;
+  shown = i;
+  const p = PROJECTS[i];
+  roll(document.getElementById('rCount'), String(i + 1).padStart(2, '0'), 0);
+  roll(document.getElementById('rRole'), p.role, CONFIG.stagger * 1);
+  roll(document.getElementById('rLaunch'), p.launch, CONFIG.stagger * 2);
+  roll(document.getElementById('rAward'), p.award, CONFIG.stagger * 3);
+  swatches.forEach((s, k) => { s.style.backgroundColor = p.palette[k]; });
+}
+
+/* ── the frame: conveyor + ghost list + readouts, all from `pos` ── */
+function frameStep(dt) {
+  const len = PROJECTS.length * CONFIG.gap;
+  target += (reduced ? 0 : CONFIG.drift) * dt;
+  pos += (target - pos) * CONFIG.lerp;
+
+  const half = len / 2;
+  let current = 0, best = Infinity;
+
+  cards.forEach((el, i) => {
+    let d = (i * CONFIG.gap - pos) % len;
+    if (d > half) d -= len;
+    if (d < -half) d += len;
+    const n = Math.max(-1, Math.min(1, d / half));
+    el.style.transform = `translate3d(0, ${d.toFixed(1)}px, ${(-Math.abs(n) * CONFIG.depth).toFixed(1)}px) rotateX(${(-n * CONFIG.bend).toFixed(2)}deg)`;
+    el.style.opacity = String(Math.max(0, 1 - Math.abs(n) * 1.35).toFixed(3));
+    el.style.zIndex = String(Math.round(1000 - Math.abs(d)));
+    if (Math.abs(d) < best) { best = Math.abs(d); current = i; }
+  });
+
+  // the list rides the same value
+  const step = 168, listLen = PROJECTS.length * step;
+  const wrapped = ((pos * (step / CONFIG.gap)) % listLen + listLen) % listLen;
+  track.style.transform = `translate3d(0, ${(-wrapped).toFixed(1)}px, 0)`;
+  // the list lights the entry the BELT has centred, not one it works out itself —
+  // two independent centre tests drift apart and the page stops agreeing with itself
+  entries.forEach((el, i) => el.classList.toggle('on', i === current));
+
+  showProject(current);
+}
+
+let last = 0;
+(function loop(now = 0) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((now - last) / 1000, .05);
+  last = now;
+  frameStep(dt);
+})();
+
+window.COPY = { CONFIG, frameStep, PROJECTS, get pos() { return pos; }, get shown() { return shown; } };
+</script>
+</body>
+</html>

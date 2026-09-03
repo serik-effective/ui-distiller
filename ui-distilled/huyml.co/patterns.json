@@ -1,0 +1,50 @@
+{
+  "site": "https://huyml.co/",
+  "host": "huyml.co",
+  "analyzedAt": "2026-09-04",
+  "stats": { "pages": 2, "candidates": 6, "distilled": 3 },
+  "patterns": [
+    {
+      "slug": "01-perspective-conveyor",
+      "number": "01",
+      "name": "Perspective conveyor",
+      "categories": ["scroll", "3d", "cards"],
+      "description": "A belt of cards that never stops: it drifts on its own and the wheel adds to it, while distance from centre folds each card away on X and pushes it back in Z.",
+      "trigger": "drift + wheel",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 4.4,
+      "scores": { "visual": 5, "originality": 5, "reusability": 3, "interest": 4, "difficulty": 4 },
+      "source": "https://huyml.co/",
+      "needsNetwork": true
+    },
+    {
+      "slug": "02-ghost-list",
+      "number": "02",
+      "name": "Ghost list",
+      "categories": ["scroll", "typography", "layout"],
+      "description": "Every entry sits at 24% opacity and only the one crossing an invisible reading line comes to full — legibility as a function of position, with no selection state to manage.",
+      "trigger": "shared virtual scroll",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.1,
+      "scores": { "visual": 4, "originality": 4, "reusability": 5, "interest": 3, "difficulty": 2 },
+      "source": "https://huyml.co/",
+      "needsNetwork": true
+    },
+    {
+      "slug": "03-synced-readouts",
+      "number": "03",
+      "name": "Synced readouts",
+      "categories": ["microinteraction", "typography", "motion"],
+      "description": "One index feeds five independent readouts — counter, category, name, meta panel, palette — each offset by a stagger so a single change reads as a sequence across the screen.",
+      "trigger": "index change",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 3.9,
+      "scores": { "visual": 3, "originality": 4, "reusability": 5, "interest": 4, "difficulty": 2 },
+      "source": "https://huyml.co/",
+      "needsNetwork": true
+    }
+  ]
+}

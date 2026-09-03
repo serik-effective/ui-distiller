@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ghost list — UI Distiller</title>
+<style>
+  :root {
+    --ghost: .24;        /* opacity of every entry that is not current */
+    --fade: .45s;        /* how long an entry takes to light up        */
+    --window: .5;        /* share of an item's height that counts as "at the line" */
+    --spacing: 172px;    /* distance between entries                   */
+    --ease: cubic-bezier(.22,1,.36,1);
+
+    --bg:#efeeea; --fg:#12120f; --muted:#7a786f; --line:#dcdad2; --accent:#ff6542; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0e0e0d; --fg:#f2f1ec; --muted:#8b897f; --line:#26251f; --accent:#ff6542; --panel:#161613; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:12px 18px; }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern ----------
+     A column that is always drifting. Every entry sits at ghost opacity; the one
+     crossing the reading line comes to full. Nothing is "selected" — legibility
+     is a function of position, so the list reads as one item at a time without
+     any click target or active class being managed. */
+  .stage { position:fixed; inset:0; display:grid; grid-template-columns:1fr minmax(320px, 40vw); cursor:ns-resize; touch-action:none; }
+  .left { display:grid; place-items:center; padding:0 24px; }
+  .left .plate { width:min(34vw,420px); aspect-ratio:4/3; overflow:hidden; background:var(--line); position:relative; }
+  .left .plate img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; opacity:0;
+                     transition:opacity var(--fade) var(--ease); }
+  .left .plate img.on { opacity:1; }
+
+  .column { position:relative; overflow:hidden; }
+  .track { position:absolute; left:0; top:0; width:100%; will-change:transform; }
+  .entry { padding:0 30px; height:var(--spacing); display:grid; align-content:center; gap:6px;
+           opacity:var(--ghost); transition:opacity var(--fade) var(--ease); }
+  .entry.on { opacity:1; }
+  .entry .kind { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .entry h2 { margin:0; font-size:clamp(19px,2.1vw,27px); letter-spacing:-.02em; font-weight:500; text-transform:uppercase; }
+  .entry .rule { width:22px; height:1px; background:currentColor; opacity:.5; }
+  .entry p { margin:0; color:var(--muted); font-size:13px; max-width:44ch; }
+
+  .line { position:fixed; right:0; width:40vw; top:50%; height:1px; background:var(--accent); opacity:0; z-index:9; pointer-events:none; }
+  .line.show { opacity:.4; }
+
+  .readout { position:fixed; left:18px; bottom:52px; z-index:12; color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
+  .readout b { color:var(--fg); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:96px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (max-width:820px) { .stage { grid-template-columns:1fr; } .left { display:none; } .line { width:100%; } }
+  @media (prefers-reduced-motion: reduce) { .entry, .left .plate img { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ghost list</h1>
+  <span class="meta">scroll · typography — trigger: wheel, or wait (the column drifts)</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="stage" id="stage">
+  <div class="left"><div class="plate" id="plate"></div></div>
+  <div class="column" id="column"><div class="track" id="track"></div></div>
+</div>
+<div class="line" id="line"></div>
+
+<div class="readout">current <b id="curOut">—</b> · offset <b id="offOut">0</b></div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-ghost">ghost</label>
+    <input id="c-ghost" type="range" min="0" max="100" step="2" value="24"><output for="c-ghost">0.24</output></div>
+  <div class="ctrl"><label for="c-window">window</label>
+    <input id="c-window" type="range" min="10" max="100" step="5" value="50"><output for="c-window">0.50</output></div>
+  <div class="ctrl"><label for="c-space">spacing</label>
+    <input id="c-space" type="range" min="90" max="300" step="6" value="172" data-var="--spacing" data-unit="px"><output for="c-space">172px</output></div>
+  <div class="ctrl"><label for="c-fade">fade</label>
+    <input id="c-fade" type="range" min="0" max="1200" step="25" value="450" data-var="--fade" data-unit="ms"><output for="c-fade">450ms</output></div>
+  <div class="ctrl"><label for="c-drift">drift</label>
+    <input id="c-drift" type="range" min="0" max="140" step="2" value="24"><output for="c-drift">24</output></div>
+  <label class="toggle"><input type="checkbox" id="lineToggle"> reading line</label>
+  <span class="hint">no active class is managed — legibility follows position</span>
+</div>
+
+<script>
+const CONFIG = { ghostWindow: 0.5, drift: 24, lerp: 0.1 };
+const ITEMS = [
+  { kind: 'Agency & Studio', name: 'Alpha Works', copy: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.' },
+  { kind: 'Corporate', name: 'Bravo Systems', copy: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi.' },
+  { kind: 'Photography', name: 'Charlie Field', copy: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum.' },
+  { kind: 'Blockchain', name: 'Delta Network', copy: 'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia.' },
+  { kind: 'Portfolio', name: 'Echo Vol. I', copy: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium.' },
+  { kind: 'Editorial', name: 'Foxtrot Press', copy: 'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.' },
+  { kind: 'Product', name: 'Golf Interface', copy: 'Neque porro quisquam est qui dolorem ipsum quia dolor sit amet consectetur.' },
+  { kind: 'Identity', name: 'Hotel Brand', copy: 'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis.' },
+];
+
+const root = document.documentElement;
+const track = document.getElementById('track');
+const column = document.getElementById('column');
+const plate = document.getElementById('plate');
+const stage = document.getElementById('stage');
+const curOut = document.getElementById('curOut');
+const offOut = document.getElementById('offOut');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+track.innerHTML = ITEMS.map(i => `
+  <article class="entry">
+    <span class="kind">${i.kind}</span>
+    <h2>${i.name}</h2>
+    <span class="rule"></span>
+    <p>${i.copy}</p>
+  </article>`).join('');
+plate.innerHTML = ITEMS.map((_, i) =>
+  `<img src="https://picsum.photos/seed/ghost-${i + 1}/900/675" alt="">`).join('');
+
+const entries = [...track.querySelectorAll('.entry')];
+const plates = [...plate.querySelectorAll('img')];
+
+let pos = 0, target = 0;
+stage.addEventListener('wheel', e => { target += e.deltaY; }, { passive: true });
+let dragging = false, lastY = 0;
+stage.addEventListener('pointerdown', e => { dragging = true; lastY = e.clientY; stage.setPointerCapture(e.pointerId); });
+addEventListener('pointermove', e => { if (dragging) { target -= (e.clientY - lastY) * 2; lastY = e.clientY; } });
+addEventListener('pointerup', () => { dragging = false; });
+
+function spacing() { return parseFloat(getComputedStyle(root).getPropertyValue('--spacing')); }
+
+function tick(dt) {
+  const step = spacing();
+  const len = ITEMS.length * step;                 // the column wraps, so it never ends
+  target += (reduced ? 0 : CONFIG.drift) * dt;
+  pos += (target - pos) * CONFIG.lerp;
+
+  const wrapped = ((pos % len) + len) % len;
+  track.style.transform = `translate3d(0, ${(-wrapped).toFixed(1)}px, 0)`;
+
+  // the reading line sits at the middle of the column
+  const line = column.clientHeight / 2;
+  let current = -1, best = Infinity;
+
+  entries.forEach((el, i) => {
+    // each entry's centre in column space, wrapped so the list is endless
+    let c = i * step + step / 2 - wrapped;
+    if (c < -step) c += len;
+    if (c > len - step) c -= len;
+    const d = Math.abs(c - line);
+    el.style.transform = `translateY(${(c - (i * step + step / 2 - wrapped)).toFixed(1)}px)`;
+    const on = d < step * CONFIG.ghostWindow;
+    el.classList.toggle('on', on);
+    if (d < best) { best = d; current = i; }
+  });
+
+  plates.forEach((img, i) => img.classList.toggle('on', i === current));
+  curOut.textContent = current >= 0 ? ITEMS[current].name : '—';
+  offOut.textContent = Math.round(pos);
+}
+
+let last = 0;
+(function frame(now = 0) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, .05);
+  last = now;
+  tick(dt);
+})();
+
+/* controls */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); };
+  el.addEventListener('input', go); go();
+};
+bind('c-ghost', v => root.style.setProperty('--ghost', String(v / 100)), v => (v / 100).toFixed(2));
+bind('c-window', v => CONFIG.ghostWindow = v / 100, v => (v / 100).toFixed(2));
+bind('c-drift', v => CONFIG.drift = v, v => v);
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => { const v = input.value + (input.dataset.unit || ''); root.style.setProperty(input.dataset.var, v); out.textContent = v; };
+  input.addEventListener('input', go); go();
+});
+document.getElementById('lineToggle').addEventListener('change', e =>
+  document.getElementById('line').classList.toggle('show', e.target.checked));
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+window.GHOST = { CONFIG, tick, get pos() { return pos; } };
+</script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synced readouts — UI Distiller</title>
+<style>
+  :root {
+    --swap-out: 180ms;   /* old value leaves               */
+    --swap-in: 420ms;    /* new value arrives              */
+    --stagger: 60ms;     /* between the readouts           */
+    --ease-in: cubic-bezier(.55,.06,.68,.19);
+    --ease-out: cubic-bezier(.22,1,.36,1);
+
+    --bg:#efeeea; --fg:#12120f; --muted:#7a786f; --line:#dcdad2; --accent:#ff6542; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0e0e0d; --fg:#f2f1ec; --muted:#8b897f; --line:#26251f; --accent:#ff6542; --panel:#161613; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:12px 18px; }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern ----------
+     Five readouts in four corners of the screen, all fed by one index. None of
+     them knows about the others; each subscribes and re-renders itself, and the
+     stagger between them is the only thing that makes the change feel authored
+     rather than simultaneous. */
+  .stage { position:fixed; inset:0; display:grid; place-items:center; }
+  .subject { width:min(38vw,460px); aspect-ratio:4/3; overflow:hidden; background:var(--line); position:relative; }
+  .subject img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0;
+                 transition:opacity var(--swap-in) var(--ease-out); }
+  .subject img.on { opacity:1; }
+
+  /* a rolling value: old goes up and out, new comes up from below */
+  .roll { display:block; overflow:hidden; position:relative; }
+  .roll > span { display:block; transition:transform var(--swap-in) var(--ease-out), opacity var(--swap-in) linear; }
+  .roll.leaving > span { transform:translateY(-100%); opacity:0;
+                         transition:transform var(--swap-out) var(--ease-in), opacity var(--swap-out) linear; }
+  .roll.entering > span { transform:translateY(100%); opacity:0; transition:none; }
+
+  .counter { position:fixed; left:26px; bottom:64px; z-index:10; display:flex; align-items:baseline; gap:6px; }
+  .counter .big { font-size:clamp(56px,9vw,132px); line-height:.8; letter-spacing:-.05em; font-weight:600; }
+  .counter .total { color:var(--muted); font-size:13px; }
+
+  .meta { position:fixed; left:26px; top:96px; z-index:10; display:grid; gap:14px; width:250px; }
+  .meta .row { display:grid; grid-template-columns:74px 1fr; gap:10px; font-size:12px; }
+  .meta .k { color:var(--muted); }
+  .meta .v { color:var(--fg); }
+
+  .palette { position:fixed; right:26px; bottom:64px; z-index:10; display:flex; gap:6px; }
+  .palette i { width:18px; height:18px; display:block; transition:background-color var(--swap-in) var(--ease-out); }
+
+  .title { position:fixed; right:26px; top:96px; z-index:10; text-align:right; width:300px; }
+  .title .kind { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .title .name { font-size:clamp(19px,2.3vw,30px); letter-spacing:-.02em; text-transform:uppercase; font-weight:500; }
+
+  .drive { position:fixed; inset:auto 0 96px 0; z-index:12; display:flex; justify-content:center; gap:8px; }
+  .drive button { font:inherit; font-size:11px; padding:5px 11px; border:1px solid var(--line);
+                  background:var(--panel); color:var(--fg); border-radius:999px; cursor:pointer; }
+  .drive button:hover { border-color:var(--fg); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:96px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:46px; }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) { .roll > span, .subject img { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Synced readouts</h1>
+  <span class="meta" style="position:static;width:auto;display:inline">microinteraction · typography — trigger: next / previous, or autoplay</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="stage"><div class="subject" id="subject"></div></div>
+
+<div class="counter">
+  <span class="big roll" id="rCount"><span>01</span></span>
+  <span class="total">/ <span id="total">08</span></span>
+</div>
+
+<div class="meta">
+  <div class="row"><span class="k">Role</span><span class="v roll" id="rRole"><span>—</span></span></div>
+  <div class="row"><span class="k">Launch</span><span class="v roll" id="rLaunch"><span>—</span></span></div>
+  <div class="row"><span class="k">Recognition</span><span class="v roll" id="rAward"><span>—</span></span></div>
+</div>
+
+<div class="title">
+  <div class="kind roll" id="rKind"><span>—</span></div>
+  <div class="name roll" id="rName"><span>—</span></div>
+</div>
+
+<div class="palette" id="palette"><i></i><i></i><i></i></div>
+
+<div class="drive">
+  <button id="prev" type="button">← previous</button>
+  <button id="auto" type="button">pause autoplay</button>
+  <button id="next" type="button">next →</button>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-out">out</label>
+    <input id="c-out" type="range" min="60" max="600" step="20" value="180" data-var="--swap-out" data-unit="ms"><output for="c-out">180ms</output></div>
+  <div class="ctrl"><label for="c-in">in</label>
+    <input id="c-in" type="range" min="120" max="1200" step="20" value="420" data-var="--swap-in" data-unit="ms"><output for="c-in">420ms</output></div>
+  <div class="ctrl"><label for="c-stag">stagger</label>
+    <input id="c-stag" type="range" min="0" max="260" step="10" value="60"><output for="c-stag">60ms</output></div>
+  <div class="ctrl"><label for="c-every">autoplay</label>
+    <input id="c-every" type="range" min="1200" max="8000" step="200" value="3200"><output for="c-every">3200ms</output></div>
+  <span class="hint">one index → five independent readouts</span>
+</div>
+
+<script>
+const CONFIG = { stagger: 60, every: 3200 };
+const PROJECTS = [
+  { kind: 'Agency & Studio', name: 'Alpha Works', role: 'Art Director',   launch: 'Nov 2024', award: 'Site of the Day',   palette: ['#ff6542', '#f4f2ed', '#1c1c1a'] },
+  { kind: 'Corporate',       name: 'Bravo Systems', role: 'Design Direction', launch: 'Feb 2025', award: 'Website of the Day', palette: ['#2b4c7e', '#e8eef6', '#0d1b2a'] },
+  { kind: 'Photography',     name: 'Charlie Field', role: 'Website Design',   launch: 'Jul 2024', award: 'Honourable Mention', palette: ['#8a8f7a', '#f0efe6', '#2a2c24'] },
+  { kind: 'Blockchain',      name: 'Delta Network', role: 'Art Direction',    launch: 'Mar 2025', award: 'Site of the Month',  palette: ['#6b4ce6', '#efeafd', '#150f2b'] },
+  { kind: 'Portfolio',       name: 'Echo Vol. I',   role: 'Design & Build',   launch: 'Sep 2023', award: 'Nominee',            palette: ['#d9a441', '#fbf3e2', '#2b2113'] },
+  { kind: 'Editorial',       name: 'Foxtrot Press', role: 'Design Direction', launch: 'Jan 2026', award: 'Site of the Day',    palette: ['#c2453f', '#f7ece9', '#241110'] },
+  { kind: 'Product',         name: 'Golf Interface',role: 'Product Design',   launch: 'May 2025', award: 'Developer Award',    palette: ['#2f7d6a', '#e6f3ef', '#0f231e'] },
+  { kind: 'Identity',        name: 'Hotel Brand',   role: 'Brand & Web',      launch: 'Aug 2024', award: 'Website of the Day', palette: ['#3d3d3d', '#efefef', '#0a0a0a'] },
+];
+
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.getElementById('total').textContent = String(PROJECTS.length).padStart(2, '0');
+
+const subject = document.getElementById('subject');
+subject.innerHTML = PROJECTS.map((_, i) => `<img src="https://picsum.photos/seed/readout-${i + 1}/900/675" alt="">`).join('');
+const plates = [...subject.querySelectorAll('img')];
+const swatches = [...document.querySelectorAll('#palette i')];
+
+/* CSS time values may be written in s or ms; the controls write ms. Reading one
+   without checking the unit is how a 0.18s swap becomes a 180-second one. */
+function msOf(name) {
+  const v = getComputedStyle(root).getPropertyValue(name).trim();
+  return v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000;
+}
+
+/* one rolling readout: out upward, reset below, in — driven from outside */
+function roll(el, text, delay = 0) {
+  const inner = el.firstElementChild;
+  if (inner.textContent === text) return;
+  const run = () => {
+    if (reduced) { inner.textContent = text; return; }
+    el.classList.add('leaving');
+    setTimeout(() => {
+      inner.textContent = text;
+      el.classList.remove('leaving');
+      el.classList.add('entering');
+      void el.offsetWidth;
+      el.classList.remove('entering');
+    }, msOf('--swap-out'));
+  };
+  delay ? setTimeout(run, delay) : run();
+}
+
+/* the single source of truth */
+let index = 0;
+const readouts = [
+  (p, i) => roll(document.getElementById('rCount'), String(i + 1).padStart(2, '0'), 0),
+  (p) => roll(document.getElementById('rKind'), p.kind, CONFIG.stagger * 1),
+  (p) => roll(document.getElementById('rName'), p.name, CONFIG.stagger * 2),
+  (p) => roll(document.getElementById('rRole'), p.role, CONFIG.stagger * 3),
+  (p) => roll(document.getElementById('rLaunch'), p.launch, CONFIG.stagger * 4),
+  (p) => roll(document.getElementById('rAward'), p.award, CONFIG.stagger * 5),
+];
+
+function setIndex(i) {
+  index = ((i % PROJECTS.length) + PROJECTS.length) % PROJECTS.length;
+  const p = PROJECTS[index];
+  readouts.forEach(fn => fn(p, index));
+  plates.forEach((img, k) => img.classList.toggle('on', k === index));
+  swatches.forEach((s, k) => { s.style.backgroundColor = p.palette[k]; });
+}
+
+let timer = null, playing = true;
+function schedule() { clearTimeout(timer); if (playing) timer = setTimeout(() => { setIndex(index + 1); schedule(); }, CONFIG.every); }
+
+document.getElementById('next').addEventListener('click', () => { setIndex(index + 1); schedule(); });
+document.getElementById('prev').addEventListener('click', () => { setIndex(index - 1); schedule(); });
+document.getElementById('auto').addEventListener('click', e => {
+  playing = !playing;
+  e.currentTarget.textContent = playing ? 'pause autoplay' : 'resume autoplay';
+  schedule();
+});
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { setIndex(index + 1); schedule(); }
+  if (e.key === 'ArrowLeft') { setIndex(index - 1); schedule(); }
+});
+
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); };
+  el.addEventListener('input', go); go();
+};
+bind('c-stag', v => CONFIG.stagger = v, v => v + 'ms');
+bind('c-every', v => { CONFIG.every = v; schedule(); }, v => v + 'ms');
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => { const v = input.value + (input.dataset.unit || ''); root.style.setProperty(input.dataset.var, v); out.textContent = v; };
+  input.addEventListener('input', go); go();
+});
+document.getElementById('theme').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+setIndex(0);
+schedule();
+window.READOUTS = { setIndex, get index() { return index; }, PROJECTS, CONFIG };
+</script>
+</body>
+</html>

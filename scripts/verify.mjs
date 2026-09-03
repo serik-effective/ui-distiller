@@ -184,8 +184,14 @@ async function checkHtml(file, where, p, host) {
   if (host && new RegExp(String.raw`https?://(?:[\w-]+\.)*${host.replace(/\./g, String.raw`\.`)}`, 'i').test(html.replace(/<!--[\s\S]*?-->/g, ''))) {
     notes.push(`${where}: mentions the source origin in markup (fine in a comment or credit link, not as a dependency)`);
   }
-  if (p.needsNetwork === false && remote) err(where, 'patterns.json says needsNetwork:false but the demo loads remote resources');
-  if (p.needsNetwork === true && !remote) warn(where, 'patterns.json says needsNetwork:true but no remote resource found');
+  // A demo may build its URLs in script rather than in markup, so check the code too
+  // before deciding whether it really reaches the network.
+  const remoteInScript = /https?:\/\/(?!localhost|127\.)[\w.-]+/.test(
+    [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n'));
+  const reachesNetwork = remote || remoteInScript;
+
+  if (p.needsNetwork === false && reachesNetwork) err(where, 'patterns.json says needsNetwork:false but the demo loads remote resources');
+  if (p.needsNetwork === true && !reachesNetwork) warn(where, 'patterns.json says needsNetwork:true but no remote resource found');
 }
 
 /* ---------- output ---------- */

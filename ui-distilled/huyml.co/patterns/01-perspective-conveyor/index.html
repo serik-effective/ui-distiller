@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perspective conveyor — UI Distiller</title>
+<style>
+  :root {
+    --gap: 320px;        /* spacing between cards along the belt, px of virtual scroll */
+    --drift: 26;         /* px per second the belt moves with no input at all        */
+    --lerp: .09;         /* how quickly the belt catches up to the wheel             */
+    --wheel: 1.1;        /* wheel delta multiplier                                   */
+    --bend: 46;          /* degrees of rotateX at the far ends of the arc            */
+    --depth: 460px;      /* how far back the ends are pushed                         */
+    --perspective: 1200px;
+
+    --bg:#efeeea; --fg:#12120f; --muted:#7a786f; --line:#dcdad2; --accent:#ff6542; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0e0e0d; --fg:#f2f1ec; --muted:#8b897f; --line:#26251f; --accent:#ff6542; --panel:#161613; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:12px 18px; }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern ----------
+     One virtual scroll value (`pos`) that never stops: it drifts on its own and
+     the wheel adds to it. Every card's position on the belt is pos modulo the
+     belt length, so the strip is endless with a fixed number of nodes. The card's
+     distance from centre then drives rotateX and translateZ, which is what makes
+     the ends fold away while the middle stays flat and readable. */
+  .stage { position:fixed; inset:0; perspective:var(--perspective); overflow:hidden;
+           display:grid; place-items:center; cursor:ns-resize; touch-action:none; }
+  .belt { position:relative; width:min(46vw, 620px); height:100%; transform-style:preserve-3d; }
+  .card { position:absolute; left:0; top:50%; width:100%; aspect-ratio:5/4; margin-top:calc(-0.5 * min(46vw,620px) * 0.8);
+          transform-style:preserve-3d; will-change:transform, opacity; }
+  .card figure { margin:0; width:100%; height:100%; overflow:hidden; background:var(--line); position:relative; }
+  .card img { width:100%; height:100%; object-fit:cover; }
+  .card figcaption { position:absolute; left:12px; bottom:10px; font-size:11px; letter-spacing:.12em;
+                     text-transform:uppercase; color:#fff; mix-blend-mode:difference; }
+
+  .centreLine { position:fixed; left:0; right:0; top:50%; height:1px; background:var(--accent); opacity:0; z-index:8; pointer-events:none; }
+  .centreLine.show { opacity:.35; }
+
+  .readout { position:fixed; left:18px; bottom:52px; z-index:12; color:var(--muted); font-size:11px;
+             display:grid; gap:3px; font-variant-numeric:tabular-nums; }
+  .readout b { color:var(--fg); }
+  .hint { position:fixed; right:18px; bottom:52px; z-index:12; color:var(--muted); font-size:11px; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:92px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:42px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .card { transition:none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Perspective conveyor</h1>
+  <span class="meta">scroll · 3d · cards — trigger: wheel, or just wait (it drifts)</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="stage" id="stage">
+  <div class="belt" id="belt"></div>
+</div>
+<div class="centreLine" id="centreLine"></div>
+
+<div class="readout">
+  <span>belt <b id="posOut">0</b> · velocity <b id="velOut">0.0</b></span>
+  <span>centred <b id="idxOut">01</b> / <span id="totalOut">08</span></span>
+</div>
+<div class="hint">the belt never stops — the wheel only adds to it</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-gap">spacing</label>
+    <input id="c-gap" type="range" min="140" max="620" step="10" value="320"><output for="c-gap">320</output></div>
+  <div class="ctrl"><label for="c-drift">drift</label>
+    <input id="c-drift" type="range" min="0" max="160" step="2" value="26"><output for="c-drift">26</output></div>
+  <div class="ctrl"><label for="c-bend">bend</label>
+    <input id="c-bend" type="range" min="0" max="85" step="1" value="46"><output for="c-bend">46°</output></div>
+  <div class="ctrl"><label for="c-depth">depth</label>
+    <input id="c-depth" type="range" min="0" max="1200" step="20" value="460"><output for="c-depth">460</output></div>
+  <div class="ctrl"><label for="c-lerp">catch-up</label>
+    <input id="c-lerp" type="range" min="2" max="40" step="1" value="9"><output for="c-lerp">0.09</output></div>
+  <label class="toggle"><input type="checkbox" id="lineToggle"> centre line</label>
+  <label class="toggle"><input type="checkbox" id="fadeToggle" checked> fade the ends</label>
+</div>
+
+<script>
+const CONFIG = {
+  gap: 320,        // px of belt per card
+  drift: 26,       // px/second with no input
+  lerp: 0.09,      // approach rate toward the wheel target
+  wheel: 1.1,      // wheel delta multiplier
+  bend: 46,        // deg of rotateX at the extremes
+  depth: 460,      // px pushed back at the extremes
+  fade: true,
+};
+
+const CARDS = [
+  { cap: 'Alpha' }, { cap: 'Bravo' }, { cap: 'Charlie' }, { cap: 'Delta' },
+  { cap: 'Echo' }, { cap: 'Foxtrot' }, { cap: 'Golf' }, { cap: 'Hotel' },
+];
+
+const stage = document.getElementById('stage');
+const belt = document.getElementById('belt');
+const posOut = document.getElementById('posOut');
+const velOut = document.getElementById('velOut');
+const idxOut = document.getElementById('idxOut');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.getElementById('totalOut').textContent = String(CARDS.length).padStart(2, '0');
+
+const nodes = CARDS.map((c, i) => {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.innerHTML = `<figure>
+      <img src="https://picsum.photos/seed/conveyor-${i + 1}/900/720" alt="" loading="eager">
+      <figcaption>${c.cap}</figcaption>
+    </figure>`;
+  belt.appendChild(el);
+  return el;
+});
+
+/* the belt: a position that always moves, plus a wheel target it eases toward */
+let pos = 0, target = 0, vel = 0;
+stage.addEventListener('wheel', e => { target += e.deltaY * CONFIG.wheel; }, { passive: true });
+let dragging = false, lastY = 0;
+stage.addEventListener('pointerdown', e => { dragging = true; lastY = e.clientY; stage.setPointerCapture(e.pointerId); });
+addEventListener('pointermove', e => { if (dragging) { target -= (e.clientY - lastY) * 2.2; lastY = e.clientY; } });
+addEventListener('pointerup', () => { dragging = false; });
+
+function layout(dt) {
+  const len = CARDS.length * CONFIG.gap;             // one full loop of the belt
+  target += (reduced ? 0 : CONFIG.drift) * dt;       // it never stops on its own
+  const before = pos;
+  pos += (target - pos) * CONFIG.lerp;
+  vel = dt > 0 ? (pos - before) / dt : 0;
+
+  let bestIndex = 0, bestDist = Infinity;
+
+  nodes.forEach((el, i) => {
+    // position on the belt, wrapped into [-len/2, len/2] so cards recycle
+    let d = (i * CONFIG.gap - pos) % len;
+    if (d > len / 2) d -= len;
+    if (d < -len / 2) d += len;
+
+    // normalised distance from the centre of the arc
+    const half = len / 2;
+    const n = Math.max(-1, Math.min(1, d / half));
+
+    // the arc: fold away and recede with distance, flat and forward at the centre
+    const rotX = -n * CONFIG.bend;
+    const z = -Math.abs(n) * CONFIG.depth;
+    const y = d;
+    el.style.transform = `translate3d(0, ${y.toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${rotX.toFixed(2)}deg)`;
+    el.style.opacity = CONFIG.fade ? String(Math.max(0, 1 - Math.abs(n) * 1.35).toFixed(3)) : '1';
+    el.style.zIndex = String(Math.round(1000 - Math.abs(d)));
+
+    if (Math.abs(d) < bestDist) { bestDist = Math.abs(d); bestIndex = i; }
+  });
+
+  posOut.textContent = Math.round(pos);
+  velOut.textContent = vel.toFixed(1);
+  idxOut.textContent = String(bestIndex + 1).padStart(2, '0');
+}
+
+let last = 0;
+(function frame(now = 0) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  layout(dt);
+})();
+
+/* controls */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); };
+  el.addEventListener('input', go); go();
+};
+bind('c-gap', v => CONFIG.gap = v, v => v);
+bind('c-drift', v => CONFIG.drift = v, v => v);
+bind('c-bend', v => CONFIG.bend = v, v => v + '°');
+bind('c-depth', v => CONFIG.depth = v, v => v);
+bind('c-lerp', v => CONFIG.lerp = v / 100, v => (v / 100).toFixed(2));
+document.getElementById('lineToggle').addEventListener('change', e =>
+  document.getElementById('centreLine').classList.toggle('show', e.target.checked));
+document.getElementById('fadeToggle').addEventListener('change', e => CONFIG.fade = e.target.checked);
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+
+/* testing seam */
+window.BELT = { CONFIG, layout, get state() { return { pos, target, vel }; } };
+</script>
+</body>
+</html>
