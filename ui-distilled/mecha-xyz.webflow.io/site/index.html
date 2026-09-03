@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capital — technical copy</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    /* line mask */
+    --in-dur:1500ms; --out-ratio:.6; --stagger:90ms; --start:150%; --descender:.3em;
+    --ease-in:cubic-bezier(.16,1,.3,1); --ease-out:cubic-bezier(.65,0,.35,1);
+    /* page transition */
+    --push:200px; --dur-push:1200ms; --dur-cover:900ms; --cover-delay:150ms; --hold:300ms;
+    --ease-menu:cubic-bezier(.82,0,.18,1);
+    /* cursor */
+    --fade:200ms; --dot:10px; --hand:34px; --arrow:40px;
+    /* footer reveal */
+    --footer-h:210px;
+
+    --bg:#e9edef; --fg:#101014; --muted:#6b6b76; --line:#d3d9dc; --accent:#2f2fff; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#7a5cff; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  img { display:block; max-width:100%; }
+  a { color:inherit; text-decoration:none; }
+  @media (pointer:fine) { body { cursor:none; } }
+
+  /* ─────────── pattern 07 · gated preloader ─────────── */
+  .preloader { position:fixed; inset:0; z-index:80; background:var(--panel); display:grid;
+               grid-template-rows:1fr auto; padding:26px; transform:translateY(0); }
+  .preloader.gone { transform:translateY(-100%); transition:transform 900ms var(--ease-menu); }
+  .preloader[hidden] { display:none; }
+  .preloader .markWrap { display:grid; place-items:center; overflow:hidden; }
+  .preloader .mark { font-size:clamp(44px,11vw,110px); letter-spacing:-.05em; font-weight:700; line-height:1;
+                     transform:translateY(120%); transition:transform 1s var(--ease-in); }
+  .preloader.ready .mark { transform:none; }
+  .preloader .mark em { font-style:normal; color:var(--accent); display:inline-block;
+                        transform:scaleX(var(--s,1)); transform-origin:left center; }
+  .preFoot { display:grid; gap:10px; }
+  .preBar { height:1px; background:var(--line); position:relative; overflow:hidden; }
+  .preBar > i { position:absolute; inset:0 auto 0 0; width:0%; background:var(--fg); display:block; }
+  .preMeta { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+  /* ─────────── pattern 06 · three-state spring cursor ─────────── */
+  .cursor { position:fixed; inset:0; z-index:75; pointer-events:none; display:grid; place-items:center; will-change:transform; }
+  .cursor > * { grid-area:1/1; opacity:0; transition:opacity var(--fade) var(--ease-in); }
+  .c-dot { width:var(--dot); height:var(--dot); border-radius:50%; background:var(--fg); }
+  .c-hand { width:var(--hand); height:var(--hand); border-radius:50%; border:1px solid var(--fg);
+            display:grid; place-items:center; font-size:9px; letter-spacing:.1em; }
+  .c-arrow { width:var(--arrow); height:var(--arrow); border-radius:50%; background:var(--accent); color:#fff;
+             display:grid; place-items:center; font-size:15px; }
+  .cursor[data-state="idle"] .c-dot, .cursor[data-state="hand"] .c-hand, .cursor[data-state="arrow"] .c-arrow { opacity:1; }
+  @media (pointer:coarse) { .cursor { display:none; } body { cursor:auto; } }
+
+  /* ─────────── pattern 02 · push-and-cover page transition ─────────── */
+  .fader { position:fixed; inset:0; z-index:70; background:var(--accent); opacity:0; pointer-events:none; }
+  .cover { position:fixed; inset:0; z-index:71; transform:translateY(100%); display:none; pointer-events:none; }
+
+  /* ─────────── pattern 01 · overscroll footer reveal ─────────── */
+  .siteFooter { position:fixed; left:0; right:0; bottom:0; z-index:0; height:var(--footer-h);
+                display:grid; place-items:center; background:var(--panel); border-top:1px solid var(--line); }
+  .siteFooter .logo { font-size:clamp(40px,11vw,120px); line-height:.9; letter-spacing:-.05em; font-weight:700; opacity:.92; }
+  .siteFooter .sub { position:absolute; bottom:14px; font-size:11px; color:var(--muted); }
+  .wrapper { position:relative; z-index:1; background:var(--bg); will-change:transform; }
+
+  /* ─────────── pattern 03 · section progress navigation ─────────── */
+  .sideNav { position:fixed; left:20px; top:50%; transform:translateY(-50%); z-index:10; width:196px; display:grid; gap:2px; }
+  .sideNav .group { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .navItem { all:unset; cursor:pointer; display:grid; grid-template-columns:24px 1fr; gap:8px; align-items:baseline;
+             padding:6px 0; color:var(--muted); transition:color .42s var(--ease-in); }
+  .navItem .num { font-size:10.5px; font-variant-numeric:tabular-nums; opacity:.7; }
+  .navItem .label { font-size:12.5px; letter-spacing:-.01em; }
+  .navItem[data-active="true"] { color:var(--fg); }
+  .track { grid-column:1/-1; height:1px; background:var(--line); margin-top:7px; position:relative; overflow:hidden; }
+  .track > i { position:absolute; inset:0 auto 0 0; width:0%; background:var(--accent); display:block; }
+
+  /* ─────────── pattern 04 · reversible line mask ─────────── */
+  .reveal .ln { display:block; clip-path:inset(0 0 calc(-1 * var(--descender)) 0); }
+  .reveal .ln > span { display:block; transform:translateY(var(--start));
+    transition:transform var(--in-dur) var(--ease-in); transition-delay:calc(var(--i) * var(--stagger)); }
+  .is-out .ln > span { transform:translateY(var(--start));
+    transition:transform calc(var(--in-dur) * var(--out-ratio)) var(--ease-out);
+    transition-delay:calc(var(--ri) * var(--stagger)); }
+  .is-in .ln > span { transform:none; }
+
+  /* ─────────── layout ─────────── */
+  header.bar { position:sticky; top:0; z-index:12; display:flex; align-items:center; gap:20px;
+               padding:14px 22px; background:color-mix(in srgb, var(--bg) 88%, transparent);
+               backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  header.bar .brand { font-weight:600; letter-spacing:-.02em; }
+  header.bar nav { display:flex; gap:18px; margin-left:auto; font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible, a:focus-visible, .navItem:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+  main { margin-left:250px; padding:0 24px; }
+  .view { max-width:820px; }
+  section.block { min-height:88vh; display:grid; align-content:center; gap:16px; padding:36px 0;
+                  border-top:1px solid var(--line); }
+  section.block:first-of-type { border-top:0; }
+  .eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); }
+  .h { font-size:clamp(27px,4.4vw,50px); line-height:1.05; letter-spacing:-.035em; margin:0; font-weight:500; }
+  .p { color:var(--muted); max-width:54ch; margin:0; }
+  .shot { margin-top:10px; }
+  .shot img { width:100%; aspect-ratio:16/10; object-fit:cover; }
+  .end { border-top:1px solid var(--line); margin-top:36px; padding:26px 0 40px;
+         display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
+
+  /* ─────────── pattern 05 · drag-spring 3D object ─────────── */
+  .objectStage { width:min(46vw,52vh); aspect-ratio:1; margin:10px 0 0; touch-action:none; }
+  .objectStage canvas { display:block; width:100%; height:100%; }
+  .objFallback { display:none; border:1px solid var(--line); padding:12px 16px; color:var(--muted); font-size:13px; }
+
+  .notice { position:fixed; left:12px; bottom:12px; z-index:60; font-size:10.5px; color:var(--muted);
+            background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 11px; }
+  .notice b { color:var(--fg); font-weight:500; }
+  .hint { position:fixed; right:16px; bottom:14px; z-index:12; color:var(--muted); font-size:11px; }
+
+  @media (max-width:900px) { .sideNav { position:static; transform:none; width:auto; margin:80px 22px 0; } main { margin-left:0; } }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<!-- pattern 07 -->
+<div class="preloader" id="preloader">
+  <div class="markWrap"><div class="mark" id="mark">STUDIO<em id="markTail">—</em></div></div>
+  <div class="preFoot">
+    <div class="preBar"><i id="preFill"></i></div>
+    <div class="preMeta"><span id="preMode">first visit</span><span id="preCount">00</span></div>
+  </div>
+</div>
+
+<!-- pattern 06 -->
+<div class="cursor" id="cursor" data-state="idle" aria-hidden="true">
+  <div class="c-dot"></div><div class="c-hand">VIEW</div><div class="c-arrow">→</div>
+</div>
+
+<!-- pattern 02 -->
+<div class="fader" id="fader" aria-hidden="true"></div>
+<div class="cover" id="cover" aria-hidden="true"></div>
+
+<!-- pattern 01 · the footer lives beneath the page -->
+<div class="siteFooter" aria-hidden="true">
+  <span class="logo">STUDIO</span>
+  <span class="sub">keep scrolling past the end to lift the page</span>
+</div>
+
+<div class="wrapper" id="wrapper">
+  <header class="bar">
+    <a class="brand" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a>
+    <nav id="routes">
+      <a href="#/index" data-color="#e9edef" aria-current="page">Index</a>
+      <a href="#/work" data-color="#E9E7DB">Work</a>
+      <a href="#/studio" data-color="#ffffff">Studio</a>
+      <a href="#/contact" data-color="#101014">Contact</a>
+    </nav>
+    <button class="btn" id="themeBtn" type="button" style="margin-left:18px">Theme</button>
+  </header>
+
+  <nav class="sideNav" id="sideNav" aria-label="Sections"></nav>
+
+  <main>
+    <div class="view" id="view"></div>
+    <div class="end"><span>End of page</span><span>keep scrolling ↓</span></div>
+  </main>
+</div>
+
+<div class="notice">technical copy · patterns <b>01–07</b> from the mecha-xyz.webflow.io distillation</div>
+<div class="hint">drag the object · hover links · scroll past the end</div>
+
+<script>
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp01 = v => Math.min(1, Math.max(0, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ms = n => parseFloat(getComputedStyle(root).getPropertyValue(n));
+
+/* ═══════════ content ═══════════ */
+const VIEWS = {
+  '#/index': { kicker: 'Index', sections: [
+    { name: 'Premise', h: 'Sed ut perspiciatis unde omnis iste natus error sit voluptatem', p: 'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.', img: 'idx-1', object: true },
+    { name: 'Method', h: 'Neque porro quisquam est qui dolorem ipsum quia dolor', p: 'Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.', img: 'idx-2' },
+    { name: 'Practice', h: 'Quis autem vel eum iure reprehenderit qui in ea voluptate', p: 'Velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur.', img: 'idx-3' },
+    { name: 'Notes', h: 'At vero eos et accusamus et iusto odio dignissimos', p: 'Ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint.', img: 'idx-4' },
+  ] },
+  '#/work': { kicker: 'Work', sections: [
+    { name: 'Selected', h: 'Temporibus autem quibusdam et aut officiis debitis', p: 'Aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.', img: 'wrk-1' },
+    { name: 'Archive', h: 'Itaque earum rerum hic tenetur a sapiente delectus', p: 'Ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.', img: 'wrk-2' },
+    { name: 'Process', h: 'Nam libero tempore cum soluta nobis est eligendi', p: 'Optio cumque nihil impedit quo minus id quod maxime placeat facere possimus.', img: 'wrk-3' },
+  ] },
+  '#/studio': { kicker: 'Studio', sections: [
+    { name: 'People', h: 'Excepteur sint occaecat cupidatat non proident', p: 'Sunt in culpa qui officia deserunt mollit anim id est laborum.', img: 'std-1' },
+    { name: 'Place', h: 'Duis aute irure dolor in reprehenderit in voluptate', p: 'Velit esse cillum dolore eu fugiat nulla pariatur.', img: 'std-2' },
+  ] },
+  '#/contact': { kicker: 'Contact', sections: [
+    { name: 'Say hello', h: 'Ut enim ad minim veniam quis nostrud exercitation', p: 'Ullamco laboris nisi ut aliquip ex ea commodo consequat.', img: 'cnt-1' },
+    { name: 'Elsewhere', h: 'Lorem ipsum dolor sit amet consectetur adipiscing', p: 'Elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.', img: 'cnt-2' },
+  ] },
+};
+
+const view = document.getElementById('view');
+const sideNav = document.getElementById('sideNav');
+let navItems = [];
+
+function renderView(hash) {
+  const v = VIEWS[hash] || VIEWS['#/index'];
+  view.innerHTML = v.sections.map((s, i) => `
+    <section class="block reveal is-out" data-section data-name="${s.name}">
+      <span class="eyebrow">${String(i + 1).padStart(2, '0')} — ${v.kicker}</span>
+      <h2 class="h revealTarget">${s.h}</h2>
+      <p class="p revealTarget">${s.p}</p>
+      ${s.object ? '<div class="objectStage" id="objectStage"></div><div class="objFallback" id="objFallback">WebGL or the Three.js CDN is unavailable here.</div>' : ''}
+      <div class="shot"><img src="https://picsum.photos/seed/${s.img}/1200/750" alt="" loading="lazy"></div>
+    </section>`).join('');
+  buildNav();
+  splitAll();
+  if (v.sections.some(s => s.object)) initObject();
+  requestUpdate();
+}
+
+/* ═══ pattern 03 · section progress navigation ═══ */
+const topOf = el => el.getBoundingClientRect().top + scrollY;
+const bottomOf = el => el.getBoundingClientRect().bottom + scrollY;
+
+function buildNav() {
+  const sections = [...view.querySelectorAll('[data-section]')];
+  sideNav.innerHTML = '<div class="group">Sections</div>';
+  navItems = sections.map((sec, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'navItem';
+    btn.type = 'button';
+    btn.innerHTML = `<span class="num">${String(i + 1).padStart(2, '0')}</span><span class="label">${sec.dataset.name}</span><span class="track"><i></i></span>`;
+    btn.addEventListener('click', () => travelTo(sec));
+    sideNav.appendChild(btn);
+    return { btn, fill: btn.querySelector('i'), sec };
+  });
+}
+
+let navRaf = 0;
+function update() {
+  navRaf = 0;
+  const offset = innerHeight * 0.5;
+  let active = null;
+  for (const it of navItems) {
+    const start = topOf(it.sec) - offset, end = bottomOf(it.sec) - offset;
+    const p = clamp01((scrollY - start) / (end - start));
+    it.fill.style.width = (p * 100).toFixed(2) + '%';
+    if (scrollY >= start && scrollY < end) active = it;
+  }
+  for (const it of navItems) it.btn.dataset.active = String(it === active);
+}
+const requestUpdate = () => { cancelAnimationFrame(navRaf); navRaf = requestAnimationFrame(update); };
+addEventListener('scroll', requestUpdate, { passive: true });
+addEventListener('resize', requestUpdate);
+
+let travelRaf = 0;
+function travelTo(sec) {
+  if (reduced) { scrollTo(0, topOf(sec) - 80); return; }
+  cancelAnimationFrame(travelRaf);
+  const from = scrollY, to = topOf(sec) - 80, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 4);
+  (function step(now) {
+    const t = Math.min((now - t0) / 1200, 1);
+    scrollTo(0, from + (to - from) * ease(t));
+    if (t < 1) travelRaf = requestAnimationFrame(step);
+  })(t0);
+}
+
+/* ═══ pattern 04 · reversible line mask ═══ */
+function splitLines(el) {
+  el.dataset.source ||= el.textContent.trim();
+  el.innerHTML = el.dataset.source.split(/\s+/).map(w => `<span class="w">${w}</span>`).join(' ');
+  const rows = new Map();
+  for (const w of el.querySelectorAll('.w')) {
+    const t = Math.round(w.getBoundingClientRect().top);
+    (rows.get(t) || rows.set(t, []).get(t)).push(w.textContent);
+  }
+  const lines = [...rows.values()];
+  el.innerHTML = lines.map((words, i) =>
+    `<span class="ln" style="--i:${i}; --ri:${lines.length - 1 - i}"><span>${words.join(' ')}</span></span>`).join('');
+}
+function splitAll() { view.querySelectorAll('.revealTarget').forEach(splitLines); }
+
+let lastY = scrollY;
+const revealIO = new IntersectionObserver(entries => {
+  const down = scrollY >= lastY; lastY = scrollY;
+  for (const e of entries) {
+    if (e.isIntersecting) { e.target.classList.remove('is-out'); e.target.classList.add('is-in'); }
+    else if (!down) { e.target.classList.remove('is-in'); e.target.classList.add('is-out'); }
+  }
+}, { threshold: 0.15 });
+const observeReveals = () => view.querySelectorAll('.reveal').forEach(b => revealIO.observe(b));
+
+/* ═══ pattern 02 · push-and-cover page transition ═══ */
+const wrapper = document.getElementById('wrapper');
+const cover = document.getElementById('cover');
+const fader = document.getElementById('fader');
+const routes = document.getElementById('routes');
+let busy = false;
+
+function enterAnimation() {
+  const push = getComputedStyle(root).getPropertyValue('--push').trim();
+  wrapper.style.transition = 'none';
+  wrapper.style.transform = `translateY(${push})`;
+  void wrapper.offsetWidth;
+  wrapper.style.transition = `transform ${ms('--dur-push')}ms var(--ease-menu)`;
+  wrapper.style.transform = 'translateY(0)';
+}
+
+function go(hash) {
+  if (busy || !VIEWS[hash]) return;
+  busy = true;
+  const color = routes.querySelector(`a[href="${hash}"]`)?.dataset.color || '#fff';
+  const push = getComputedStyle(root).getPropertyValue('--push').trim();
+
+  fader.style.transition = 'opacity 500ms cubic-bezier(.45,0,.55,1)';
+  fader.style.opacity = '1';
+  wrapper.style.transition = `transform ${ms('--dur-push')}ms var(--ease-menu)`;
+  wrapper.style.transform = `translateY(-${push})`;
+
+  cover.style.display = 'block';
+  cover.style.background = color;
+  cover.style.transition = 'none';
+  cover.style.transform = 'translateY(100%)';
+  void cover.offsetWidth;
+  cover.style.transition = `transform ${ms('--dur-cover')}ms var(--ease-menu) ${ms('--cover-delay')}ms`;
+  cover.style.transform = 'translateY(0)';
+
+  const covered = ms('--dur-cover') + ms('--cover-delay') + ms('--hold');
+  setTimeout(() => {
+    scrollTo(0, 0);
+    renderView(hash);
+    observeReveals();
+    [...routes.querySelectorAll('a')].forEach(a => a.toggleAttribute('aria-current', a.getAttribute('href') === hash));
+    fader.style.opacity = '0';
+    cover.style.transition = `transform ${ms('--dur-cover')}ms var(--ease-menu)`;
+    cover.style.transform = 'translateY(-100%)';
+    enterAnimation();
+    setTimeout(() => {
+      cover.style.display = 'none';
+      cover.style.transition = 'none';
+      cover.style.transform = 'translateY(100%)';
+      busy = false;
+    }, ms('--dur-cover') + 60);
+  }, reduced ? 0 : covered);
+}
+routes.addEventListener('click', e => {
+  const a = e.target.closest('a');
+  if (!a) return;
+  e.preventDefault();
+  go(a.getAttribute('href'));
+});
+
+/* ═══ pattern 06 · three-state spring cursor ═══ */
+const cursorEl = document.getElementById('cursor');
+const HOVERABLE = 'a, button, [href], .navItem';
+const mouse = { x: -200, y: -200 }, spring = { x: -200, y: -200 };
+let entered = false;
+addEventListener('mousemove', e => {
+  if (!entered) { entered = true; mouse.x = spring.x = e.clientX; mouse.y = spring.y = e.clientY; return; }
+  mouse.x = e.clientX; mouse.y = e.clientY;
+});
+document.addEventListener('mouseleave', () => { entered = false; });
+document.addEventListener('mouseover', e => {
+  cursorEl.dataset.state = e.target.closest('.shot, img') ? 'arrow'
+    : e.target.closest(HOVERABLE) ? 'hand' : 'idle';
+});
+
+/* ═══ pattern 01 · overscroll footer reveal ═══ */
+const FALL = { threshold: 600, gain: 0.0012, follow: 0.12, closeDuration: 450, idle: 200 };
+function cubicBezier(p1x, p1y, p2x, p2y) {
+  const A = (a1, a2) => 1 - 3 * a2 + 3 * a1, B = (a1, a2) => 3 * a2 - 6 * a1, C = a1 => 3 * a1;
+  const calc = (t, a1, a2) => ((A(a1, a2) * t + B(a1, a2)) * t + C(a1)) * t;
+  const slope = (t, a1, a2) => 3 * A(a1, a2) * t * t + 2 * B(a1, a2) * t + C(a1);
+  return x => { let t = x; for (let i = 0; i < 4; i++) { const s = slope(t, p1x, p2x); if (!s) break; t -= (calc(t, p1x, p2x) - x) / s; } return calc(t, p1y, p2y); };
+}
+const easeClose = cubicBezier(.86, 0, .27, .98);
+let fallRaf = null, currentY = 0, targetY = 0, closing = false, closeStartY = 0, closeStartTime = null, acc = 0, idleTimer = null;
+const atBottom = () => scrollY >= document.documentElement.scrollHeight - innerHeight - 2;
+const footerH = () => document.querySelector('.siteFooter').offsetHeight;
+
+function fallFrame(ts) {
+  fallRaf = null;
+  if (closing) {
+    if (closeStartTime === null) closeStartTime = ts;
+    const t = Math.min((ts - closeStartTime) / FALL.closeDuration, 1);
+    currentY = closeStartY * (1 - easeClose(t));
+    paintFall();
+    if (t < 1) fallRaf = requestAnimationFrame(fallFrame);
+    else { currentY = 0; closing = false; closeStartTime = null; paintFall(); }
+    return;
+  }
+  if (Math.abs(currentY) < .5 && targetY === 0) { currentY = 0; paintFall(); return; }
+  currentY += (targetY - currentY) * FALL.follow;
+  paintFall();
+  if (Math.abs(currentY - targetY) > .1) fallRaf = requestAnimationFrame(fallFrame);
+}
+function paintFall() {
+  if (busy) return;                       // never fight the page transition
+  wrapper.style.transform = currentY === 0 ? '' : `translate3d(0, ${currentY}px, 0)`;
+}
+const kick = () => { cancelAnimationFrame(fallRaf); fallRaf = requestAnimationFrame(fallFrame); };
+addEventListener('wheel', e => {
+  if (busy) return;
+  if (atBottom() && e.deltaY > 0) {
+    if (closing) return;
+    acc = Math.min(acc + (e.deltaMode === 0 ? e.deltaY : e.deltaY * 20), FALL.threshold);
+    targetY = -Math.min(acc * FALL.gain, 1) * footerH();
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { acc = 0; closing = true; closeStartY = currentY; closeStartTime = null; targetY = 0; kick(); }, FALL.idle);
+    kick();
+  } else if (!atBottom()) { acc = 0; closing = false; closeStartTime = null; targetY = 0; kick(); }
+}, { passive: true });
+
+/* ═══ pattern 05 · drag-spring 3D object ═══ */
+const OBJ = { stiffness: 80, damping: 14, maxTilt: 25, sensitivity: .006, frustum: 3.2, spin: Math.PI };
+let objState = null;
+function initObject() {
+  const stage = document.getElementById('objectStage');
+  const fallback = document.getElementById('objFallback');
+  if (!stage) return;
+  if (!window.THREE) { if (fallback) fallback.style.display = 'block'; return; }
+  if (fallback) fallback.style.display = 'none';     // the library arrived after the first render
+  if (objState) { objState.dispose(); objState = null; }
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -100, 100);
+  camera.position.set(5, 5, 5); camera.lookAt(0, 0, 0);
+
+  const group = new THREE.Group();
+  group.add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3),
+    new THREE.MeshStandardMaterial({ color: 0x2b2f38, roughness: .35, metalness: .55 })));
+  for (const [x, y, z] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(.28, .28, .28),
+      new THREE.MeshStandardMaterial({ color: 0x2f2fff, roughness: .3 }));
+    fin.position.set(x * .86, y * .86, z * .86); group.add(fin);
+  }
+  group.rotation.order = 'YXZ';
+  scene.add(group);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(4, 6, 4); scene.add(key);
+
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const target = { x: 0, y: 0 }, current = { x: 0, y: 0 }, velocity = { x: 0, y: 0 }, base = { x: 0, y: 0 }, start = { x: 0, y: 0 };
+  let dragging = false, scrollRot = 0, raf = 0, last = 0;
+
+  function frustum() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    const aspect = w / h, f = OBJ.frustum;
+    if (aspect < 1) { camera.left = -f / 2; camera.right = f / 2; camera.top = f / (2 * aspect); camera.bottom = -f / (2 * aspect); }
+    else { camera.left = -f * aspect / 2; camera.right = f * aspect / 2; camera.top = f / 2; camera.bottom = -f / 2; }
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+  }
+  frustum();
+  const onResize = () => frustum();
+  addEventListener('resize', onResize);
+
+  stage.addEventListener('pointerdown', e => {
+    dragging = true; stage.setPointerCapture(e.pointerId);
+    start.x = e.clientX; start.y = e.clientY; base.x = current.x; base.y = current.y;
+    velocity.x = velocity.y = 0;
+  });
+  const onMove = e => {
+    if (!dragging) return;
+    const max = THREE.MathUtils.degToRad(OBJ.maxTilt);
+    target.x = clamp(base.x + (e.clientY - start.y) * OBJ.sensitivity, -max, max);
+    target.y = clamp(base.y + (e.clientX - start.x) * OBJ.sensitivity, -max, max);
+  };
+  const release = () => { dragging = false; target.x = 0; target.y = 0; };
+  addEventListener('pointermove', onMove);
+  addEventListener('pointerup', release);
+  const onScroll = () => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    scrollRot = (max > 0 ? clamp(scrollY / max, 0, 1) : 0) * OBJ.spin;
+  };
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  (function loop(now = 0) {
+    raf = requestAnimationFrame(loop);
+    const dt = Math.min((now - last) / 1000, .1); last = now;
+    for (const axis of ['x', 'y']) {
+      const force = (target[axis] - current[axis]) * OBJ.stiffness;
+      velocity[axis] += (force - velocity[axis] * OBJ.damping) * dt;
+      current[axis] += velocity[axis] * dt;
+    }
+    group.rotation.y = (reduced ? 0 : scrollRot) + current.y;
+    group.rotation.x = current.x;
+    renderer.render(scene, camera);
+  })();
+
+  objState = { dispose() {
+    cancelAnimationFrame(raf);
+    removeEventListener('resize', onResize); removeEventListener('pointermove', onMove);
+    removeEventListener('pointerup', release); removeEventListener('scroll', onScroll);
+    renderer.dispose(); renderer.domElement.remove();
+  } };
+}
+
+/* ═══ pattern 07 · gated preloader ═══ */
+const pre = document.getElementById('preloader');
+const preFill = document.getElementById('preFill');
+const preCount = document.getElementById('preCount');
+const preMode = document.getElementById('preMode');
+const markTail = document.getElementById('markTail');
+const gates = { bar: false, loop: false, load: false };
+let preTimers = [], preRafs = [];
+
+function tryExit() {
+  if (!(gates.bar && gates.loop && gates.load)) return;
+  preTimers.push(setTimeout(() => {
+    pre.classList.add('gone');
+    preTimers.push(setTimeout(() => { pre.hidden = true; }, 960));
+  }, reduced ? 0 : 550));
+}
+function openGate(name) { if (gates[name]) return; gates[name] = true; tryExit(); }
+
+function runCounter(full) {
+  if (!full) { preFill.style.width = '100%'; preCount.textContent = '100'; openGate('bar'); return; }
+  const dur = 2600, t0 = performance.now();
+  const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  (function step(now) {
+    const t = Math.min((now - t0) / dur, 1), p = ease(t);
+    preFill.style.width = (p * 100).toFixed(1) + '%';
+    preCount.textContent = String(Math.round(p * 100)).padStart(2, '0');
+    if (t < 1) preRafs.push(requestAnimationFrame(step)); else openGate('bar');
+  })(t0);
+}
+function runLoop() {
+  let dir = 1;
+  (function cycle() {
+    const dur = 550, t0 = performance.now();
+    (function step(now) {
+      const t = Math.min((now - t0) / dur, 1), e = 1 - Math.pow(1 - t, 3);
+      markTail.style.setProperty('--s', String(dir > 0 ? 1 + e * 7 : 8 - e * 7));
+      if (t < 1) { preRafs.push(requestAnimationFrame(step)); return; }
+      if (dir > 0) { dir = -1; cycle(); return; }
+      dir = 1;
+      if (gates.load) openGate('loop'); else cycle();
+    })(t0);
+  })();
+}
+function startPreloader() {
+  const returning = sessionStorage.getItem('seen') === '1';
+  sessionStorage.setItem('seen', '1');
+  preMode.textContent = returning ? 'returning · short intro' : 'first visit · full intro';
+  pre.classList.add('ready');
+  runCounter(!returning);
+  runLoop();
+  if (document.readyState === 'complete') openGate('load');
+  else addEventListener('load', () => openGate('load'));
+  preTimers.push(setTimeout(() => openGate('load'), 4000));   // never hang on a slow asset
+  // Last-resort safety: a preloader that never lifts is the worst failure a page
+  // can have, so force every gate after 6s no matter what stalled.
+  preTimers.push(setTimeout(() => { openGate('bar'); openGate('loop'); openGate('load'); }, 6000));
+}
+
+/* ═══ one cursor loop ═══ */
+(function cursorLoop() {
+  requestAnimationFrame(cursorLoop);
+  spring.x += (mouse.x - spring.x) * .14;
+  spring.y += (mouse.y - spring.y) * .14;
+  cursorEl.style.transform = `translate3d(${spring.x - innerWidth / 2}px, ${spring.y - innerHeight / 2}px, 0)`;
+})();
+
+/* ═══ boot ═══ */
+document.getElementById('themeBtn').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+let resizeT;
+addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    const state = [...view.querySelectorAll('.reveal')].map(b => b.classList.contains('is-in'));
+    splitAll();
+    [...view.querySelectorAll('.reveal')].forEach((b, i) => b.classList.toggle('is-in', state[i]));
+  }, 200);
+});
+
+renderView(location.hash && VIEWS[location.hash] ? location.hash : '#/index');
+observeReveals();
+enterAnimation();
+startPreloader();
+
+window.COPY = { VIEWS, go, update, FALL, OBJ, gates, renderView };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js" onload="initObject()"></script>
+</body>
+</html>

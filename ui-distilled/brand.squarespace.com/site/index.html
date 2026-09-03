@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foundations — technical copy</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    /* ring carousel */
+    --radius: 420px; --tilt: 24deg; --depth: 520px; --crop: 26;
+    /* line mask */
+    --mask-dur: .5s; --mask-stagger: .08s; --mask-ease: cubic-bezier(.215,.61,.355,1);
+    /* poster sequence */
+    --converge: 84px; --rotate: 65deg; --perspective: 1400px;
+    /* chrome */
+    --header-h: 52px; --menu-blur: 40px;
+
+    --bg:#0e0e0e; --fg:#f3f3f3; --muted:#8d8d8d; --line:#242424; --panel:#161616;
+  }
+  :root[data-theme="light"] { --bg:#f2f1ee; --fg:#111; --muted:#6a6a66; --line:#e0dfda; --panel:#fff; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg); overflow-x:hidden;
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  img { display:block; max-width:100%; }
+  a { color:inherit; }
+
+  /* ─────────── pattern 03 · conditional difference header ─────────── */
+  .header { position:fixed; inset:0 0 auto 0; z-index:30; height:var(--header-h);
+            display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+            color:#fff; pointer-events:none; transition:color .3s ease; }
+  body.useBlendMode .header { mix-blend-mode:difference; }
+  body.menuOpen .header { mix-blend-mode:normal !important; color:var(--fg); }
+  .header a, .header button { pointer-events:auto; color:inherit; text-decoration:none; }
+  .header__brand { font-weight:600; letter-spacing:-.01em; font-size:14px; }
+  .header__right { display:flex; gap:16px; align-items:center; font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+  .header button { font:inherit; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+                   background:transparent; border:0; cursor:pointer; padding:6px 2px; }
+  .header button:focus-visible, .menu a:focus-visible { outline:2px solid currentColor; outline-offset:3px; }
+
+  .menu { position:fixed; inset:0; z-index:29; display:grid; align-content:center; gap:2px; padding:0 20px;
+          background:color-mix(in srgb, var(--bg) 80%, transparent);
+          backdrop-filter:blur(var(--menu-blur)); -webkit-backdrop-filter:blur(var(--menu-blur));
+          opacity:0; visibility:hidden; transition:opacity .35s ease, visibility 0s linear .35s; }
+  body.menuOpen .menu { opacity:1; visibility:visible; transition:opacity .35s ease, visibility 0s; }
+  .menu a { text-decoration:none; font-size:clamp(28px,5.5vw,54px); letter-spacing:-.04em; padding:4px 0;
+            display:flex; gap:18px; align-items:baseline; transition:opacity .3s ease; }
+  .menu a i { font-style:normal; font-size:12px; color:var(--muted); }
+  .menu:hover a { opacity:.32; }
+  .menu a:hover, .menu a:focus-visible { opacity:1; }
+
+  /* ─────────── pattern 02 · directional line mask ─────────── */
+  .mask { display:block; overflow-x:visible; overflow-y:clip; }
+  .mask > span { display:block; transform:translateY(100%); opacity:0;
+                 transition:transform var(--mask-dur) var(--mask-ease), opacity var(--mask-dur) linear;
+                 transition-delay:calc(var(--i,0) * var(--mask-stagger)); text-box:trim-end text; }
+  .is-in .mask > span { transform:none; opacity:1; }
+  .is-leaving .mask > span { transform:translateY(-110%); opacity:0; }
+
+  /* ─────────── pattern 01 · spring ring carousel ─────────── */
+  .hero { position:relative; height:100dvh; perspective:1600px; overflow:hidden; cursor:grab; touch-action:none; }
+  .hero.dragging { cursor:grabbing; }
+  .ring { position:absolute; left:50%; top:50%; transform-style:preserve-3d; will-change:transform; }
+  .item { position:absolute; left:0; top:0; transform-style:preserve-3d; backface-visibility:hidden; will-change:transform; }
+  .item__inner { position:absolute; left:0; top:0; width:100vw; height:100dvh; margin:-50dvh -50vw;
+                 will-change:transform, clip-path; background:#111; overflow:hidden; }
+  .item__inner img { width:100%; height:100%; object-fit:cover; }
+  .item__inner figcaption { position:absolute; left:24px; bottom:26px; color:#fff; mix-blend-mode:difference;
+                            font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+  .item__num { position:absolute; right:24px; top:20px; color:#fff; mix-blend-mode:difference;
+               font-size:min(16vw,20dvh); line-height:.8; letter-spacing:-.05em; font-weight:600; opacity:.9; }
+  .heroUi { position:absolute; inset:auto 0 22px 0; z-index:5; display:flex; justify-content:space-between;
+            padding:0 20px; color:#fff; mix-blend-mode:difference; font-size:12px; pointer-events:none;
+            letter-spacing:.1em; text-transform:uppercase; }
+  .heroUi .cap { overflow-y:clip; }
+  .heroUi .cap > span { display:block; }
+
+  /* ─────────── pattern 04 · pinned poster sequence ─────────── */
+  .sequence { position:relative; height:480vh; }
+  .stage { position:sticky; top:0; height:100dvh; display:grid; place-items:center;
+           perspective:var(--perspective); overflow:clip; }
+  .poster { position:relative; width:min(44vw,60dvh); aspect-ratio:3/4; transform-style:preserve-3d;
+            transform:rotateY(calc(var(--rot,0) * 1deg)); will-change:transform; }
+  .poster img { width:100%; height:100%; object-fit:cover; }
+  .poster::after { content:""; position:absolute; inset:0; background:#000; opacity:calc(var(--shade,0) * .5); }
+  .seqCopy { position:absolute; inset:auto 0 11dvh 0; display:grid; justify-items:center; gap:8px; text-align:center; padding:0 20px; }
+  .seqCopy > * { opacity:var(--textOp,0); }
+  .seqCopy h2 { font-size:clamp(21px,3vw,34px); letter-spacing:-.03em; font-weight:500; margin:0;
+                transform:translateX(calc(var(--conv,1) * calc(var(--converge) * -1))); }
+  .seqCopy p { color:var(--muted); max-width:46ch; margin:0;
+               transform:translateX(calc(var(--conv,1) * var(--converge))); }
+
+  /* ─────────── page furniture ─────────── */
+  section.copy { max-width:900px; margin:0 auto; padding:16vh 24px; display:grid; gap:20px; }
+  section.copy h2 { font-size:clamp(28px,4.6vw,52px); line-height:1.04; letter-spacing:-.038em; margin:0; font-weight:500; max-width:17ch; }
+  section.copy p { color:var(--muted); max-width:58ch; margin:0; }
+  .eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; max-width:1180px; margin:0 auto; padding:0 24px 16vh; }
+  .grid figure { margin:0; display:grid; gap:10px; }
+  .grid img { aspect-ratio:4/5; object-fit:cover; }
+  .grid figcaption { font-size:12px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+
+  footer { border-top:1px solid var(--line); padding:40px 24px 60px; display:grid; gap:12px; text-align:center; color:var(--muted); font-size:12px; }
+  footer a { text-decoration:none; border-bottom:1px solid var(--line); }
+  footer a:hover { color:var(--fg); border-color:var(--fg); }
+
+  .notice { position:fixed; left:12px; bottom:12px; z-index:40; font-size:10.5px; color:var(--muted);
+            background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 11px; }
+  .notice b { color:var(--fg); font-weight:500; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sequence { height:130vh; }
+    .poster { transform:none !important; }
+    .seqCopy > * { transform:none !important; opacity:1 !important; }
+    .mask > span { transition-duration:1ms !important; }
+  }
+</style>
+</head>
+<body class="useBlendMode">
+
+<header class="header">
+  <a class="header__brand" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a>
+  <span class="header__right">
+    <button id="themeBtn" type="button">Theme</button>
+    <button id="menuBtn" type="button" aria-expanded="false">Index</button>
+  </span>
+</header>
+
+<nav class="menu" id="menu" aria-label="Sections">
+  <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener"><i>01</i> Lorem</a>
+  <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener"><i>02</i> Ipsum</a>
+  <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener"><i>03</i> Dolor</a>
+  <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener"><i>04</i> Consectetur</a>
+</nav>
+
+<!-- pattern 01 -->
+<div class="hero" id="hero">
+  <div class="ring" id="ring"></div>
+  <div class="heroUi">
+    <span class="cap"><span id="heroCap">Drag the ring</span></span>
+    <span id="heroIdx">01 / 06</span>
+  </div>
+</div>
+
+<section class="copy" data-reveal>
+  <span class="eyebrow">Lorem ipsum</span>
+  <h2 class="revealTarget">Sed ut perspiciatis unde omnis iste natus error sit voluptatem</h2>
+  <p class="revealTarget">Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est qui dolorem ipsum quia dolor sit amet.</p>
+</section>
+
+<!-- pattern 04 -->
+<section class="sequence" id="sequence">
+  <div class="stage" id="stage">
+    <div class="poster" id="poster"><img src="https://picsum.photos/seed/poster-a/900/1200" alt=""></div>
+    <div class="seqCopy" id="seqCopy">
+      <h2>Ut enim ad minima veniam</h2>
+      <p>Quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.</p>
+    </div>
+  </div>
+</section>
+
+<section class="copy" data-reveal>
+  <span class="eyebrow">Dolor sit amet</span>
+  <h2 class="revealTarget">At vero eos et accusamus et iusto odio dignissimos ducimus</h2>
+  <p class="revealTarget">Qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.</p>
+</section>
+
+<div class="grid">
+  <figure><img src="https://picsum.photos/seed/grid-1/800/1000" alt=""><figcaption>Lorem, 001</figcaption></figure>
+  <figure><img src="https://picsum.photos/seed/grid-2/800/1000" alt=""><figcaption>Ipsum, 002</figcaption></figure>
+  <figure><img src="https://picsum.photos/seed/grid-3/800/1000" alt=""><figcaption>Dolor, 003</figcaption></figure>
+</div>
+
+<footer>
+  <span>Technical copy · placeholder content only</span>
+  <span>Images <a href="https://picsum.photos" target="_blank" rel="noreferrer noopener">picsum.photos</a> · text lorem ipsum · links <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a></span>
+</footer>
+
+<div class="notice">technical copy · patterns <b>01–04</b> from the brand.squarespace.com distillation</div>
+
+<script>
+/* ═══ shared helpers ═══ */
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp01 = v => Math.min(1, Math.max(0, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const rad = d => d * Math.PI / 180;
+
+/* ═══ pattern 03 · conditional difference header ═══ */
+const menuBtn = document.getElementById('menuBtn');
+menuBtn.addEventListener('click', () => {
+  const open = document.body.classList.toggle('menuOpen');
+  menuBtn.setAttribute('aria-expanded', String(open));
+  menuBtn.textContent = open ? 'Close' : 'Index';
+});
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('menuOpen')) menuBtn.click();
+});
+document.getElementById('themeBtn').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+});
+
+/* ═══ pattern 02 · directional line mask ═══ */
+function splitLines(el) {
+  el.dataset.source ||= el.textContent.trim();
+  el.innerHTML = el.dataset.source.split(/\s+/).map(w => `<span class="w">${w}</span>`).join(' ');
+  const rows = new Map();
+  for (const w of el.querySelectorAll('.w')) {
+    const t = Math.round(w.getBoundingClientRect().top);
+    (rows.get(t) || rows.set(t, []).get(t)).push(w.textContent);
+  }
+  el.innerHTML = [...rows.values()]
+    .map((words, i) => `<span class="mask" style="--i:${i}"><span>${words.join(' ')}</span></span>`).join('');
+}
+const revealBlocks = [...document.querySelectorAll('[data-reveal]')];
+function buildReveals() { for (const b of revealBlocks) b.querySelectorAll('.revealTarget').forEach(splitLines); }
+buildReveals();
+
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    if (e.isIntersecting) { e.target.classList.remove('is-leaving'); e.target.classList.add('is-in'); }
+    else if (e.boundingClientRect.top > 0) { e.target.classList.remove('is-in'); e.target.classList.add('is-leaving'); }
+  }
+}, { threshold: 0.2 });
+revealBlocks.forEach(b => io.observe(b));
+
+/* ═══ pattern 01 · spring ring carousel ═══ */
+const RING = { count: 6, radius: 420, tilt: 24, depth: 520, stiffness: 100, damping: 16, crop: 0.26, scaleDown: 0.8 };
+const SLIDES = [
+  { n: '01', cap: 'Lorem ipsum' }, { n: '02', cap: 'Dolor sit amet' }, { n: '03', cap: 'Consectetur' },
+  { n: '04', cap: 'Adipiscing elit' }, { n: '05', cap: 'Sed do eiusmod' }, { n: '06', cap: 'Tempor incididunt' },
+];
+const hero = document.getElementById('hero');
+const ringEl = document.getElementById('ring');
+const heroCap = document.getElementById('heroCap');
+const heroIdx = document.getElementById('heroIdx');
+
+const items = SLIDES.map((s, i) => {
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.innerHTML = `<figure class="item__inner">
+      <img src="https://picsum.photos/seed/ring-${i + 1}/1600/1000" alt="">
+      <span class="item__num">${s.n}</span>
+      <figcaption>${s.cap}</figcaption>
+    </figure>`;
+  el.addEventListener('click', () => setTarget(i));
+  ringEl.appendChild(el);
+  return { root: el, inner: el.firstElementChild, activePr: 0, index: i };
+});
+
+let pr = 0, vel = 0, target = 0, dragging = false, lastX = 0;
+function setTarget(i) {
+  target = i;
+  while (target - pr > RING.count / 2) target -= RING.count;
+  while (pr - target > RING.count / 2) target += RING.count;
+}
+hero.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; hero.classList.add('dragging'); hero.setPointerCapture(e.pointerId);
+});
+addEventListener('pointermove', e => {
+  if (!dragging) return;
+  pr -= (e.clientX - lastX) * 0.006; lastX = e.clientX; target = pr;
+});
+const endDrag = () => {
+  if (!dragging) return;
+  dragging = false; hero.classList.remove('dragging');
+  setTarget(((Math.round(pr) % RING.count) + RING.count) % RING.count);
+};
+addEventListener('pointerup', endDrag);
+addEventListener('pointercancel', endDrag);
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') target += 1;
+  else if (e.key === 'ArrowLeft') target -= 1;
+});
+
+let capCurrent = '', capBusy = false;
+function swapCap(text) {
+  if (text === capCurrent || capBusy) return;
+  capCurrent = text;
+  if (reduced) { heroCap.textContent = text; return; }
+  capBusy = true;
+  heroCap.style.transition = 'transform .2s cubic-bezier(.55,.06,.68,.19), opacity .2s linear';
+  heroCap.style.transform = 'translateY(-100%)'; heroCap.style.opacity = '0';
+  setTimeout(() => {
+    heroCap.textContent = text;
+    heroCap.style.transition = 'none';
+    heroCap.style.transform = 'translateY(100%)';
+    void heroCap.offsetWidth;
+    heroCap.style.transition = 'transform .5s var(--mask-ease), opacity .3s linear';
+    heroCap.style.transform = 'translateY(0)'; heroCap.style.opacity = '1';
+    capBusy = false;
+  }, 200);
+}
+
+function advanceRing(dt) {
+  if (!dragging) {
+    vel += ((target - pr) * RING.stiffness - vel * RING.damping) * dt;
+    pr += vel * dt;
+  } else vel = 0;
+
+  const active = ((Math.round(pr) % RING.count) + RING.count) % RING.count;
+  const settled = Math.abs(vel) < 0.15 && Math.abs(target - pr) < 0.02 && !dragging;
+  ringEl.style.transform = `translateZ(${-RING.depth}px) rotateX(${RING.tilt}deg)`;
+
+  for (const it of items) {
+    const angle = (pr - it.index) / RING.count * 360 + 90;
+    const x = Math.cos(rad(angle)) * RING.radius;
+    const z = Math.sin(rad(angle)) * RING.radius;
+    it.root.style.transform = `translate3d(${x.toFixed(2)}px,0,${z.toFixed(2)}px)`;
+    const want = settled && it.index === active ? 1 : 0;
+    it.activePr = reduced ? want : lerp(it.activePr, want, 1 - Math.pow(0.001, dt));
+    const inset = RING.crop * 100 * (1 - it.activePr);
+    it.inner.style.transform = `scale(${lerp(RING.scaleDown, 1, it.activePr).toFixed(4)})`;
+    it.inner.style.clipPath = `inset(${inset.toFixed(2)}% ${(inset * (innerWidth / innerHeight > 1 ? 1.55 : .7)).toFixed(2)}%)`;
+    it.inner.style.zIndex = String(Math.round(1000 + z));
+  }
+  heroIdx.textContent = String(active + 1).padStart(2, '0') + ' / ' + String(RING.count).padStart(2, '0');
+  swapCap(SLIDES[active].cap);
+}
+
+/* ═══ pattern 04 · pinned poster sequence ═══ */
+const SEQ = { textEnd: 0.42, hold: 0.18, rotate: 65 };
+const sequence = document.getElementById('sequence');
+const stage = document.getElementById('stage');
+const poster = document.getElementById('poster');
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+function applySequence() {
+  const r = sequence.getBoundingClientRect();
+  const travel = r.height - innerHeight;
+  const p = travel > 0 ? clamp01(-r.top / travel) : 0;
+  const t = easeOut(clamp01(p / SEQ.textEnd));
+  const start = SEQ.textEnd + SEQ.hold;
+  const rot = easeInOut(clamp01((p - start) / (1 - start)));
+  stage.style.setProperty('--conv', (1 - t).toFixed(4));
+  stage.style.setProperty('--textOp', t.toFixed(4));
+  poster.style.setProperty('--rot', (rot * SEQ.rotate).toFixed(3));
+  poster.style.setProperty('--shade', (rot * .8).toFixed(3));
+}
+let seqRaf = 0;
+const requestSeq = () => { cancelAnimationFrame(seqRaf); seqRaf = requestAnimationFrame(applySequence); };
+addEventListener('scroll', requestSeq, { passive: true });
+
+let resizeT;
+addEventListener('resize', () => {
+  requestSeq();
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    const state = revealBlocks.map(b => b.classList.contains('is-in'));
+    buildReveals();
+    revealBlocks.forEach((b, i) => b.classList.toggle('is-in', state[i]));
+  }, 200);
+});
+
+/* ═══ one loop ═══ */
+let last = 0;
+(function frame(now = 0) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  advanceRing(dt);
+})();
+setTarget(0);
+applySequence();
+
+/* testing seam */
+window.COPY = { ring: RING, seq: SEQ, advanceRing, applySequence, get pr() { return pr; } };
+</script>
+</body>
+</html>

@@ -207,6 +207,18 @@ Fix everything found before reporting completion. Batch browser steps with `brow
 
 Serving the output over a local static server (`preview_start`) gives a real viewport and is worth doing before blaming the demo.
 
+## Stage 9 — Technical copy (optional)
+
+When asked for a working site rather than a set of experiments, add `site/index.html` to the run: one page that composes **every** distilled pattern into a single coherent layout. It is a demonstration of the patterns working together, not a reproduction of the original.
+
+- Placeholder content only: images from `https://picsum.photos/seed/<name>/<w>/<h>`, lorem ipsum copy, and a neutral third-party link target for the brand and nav.
+- No logos, names, colours-as-identity, or copy from the source site. The page must not read as that company's site.
+- Every pattern keeps its own parameters, and patterns that could fight each other must be reconciled explicitly — a page-transition transform and an overscroll transform on the same wrapper need one owner.
+- Anything that can strand the page (a preloader gated on several conditions) needs a hard safety timeout.
+- Mark it: a visible note saying it is a technical copy with placeholder content.
+
+`scripts/gallery.mjs` links it automatically when the file exists.
+
 ## Final output
 
 ```

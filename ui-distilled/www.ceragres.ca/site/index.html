@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surfaces — technical copy</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    /* bracket marks */
+    --bracket-w:4px; --bracket-h:14px; --bracket-gap:5px; --travel:20px;
+    /* shared motion */
+    --dur:.4s; --ease:cubic-bezier(.54,0,.06,.87);
+    /* mega menu */
+    --dim:.54; --stagger:40ms; --slide:10%;
+    /* card hover */
+    --frame-x:.913; --frame-y:.861; --img-x:1.0952902519; --img-y:1.1614401858; --lift:4.624; --inset:3rem;
+    /* dialog */
+    --duration-modal:.6s; --duration-backdrop:.4s; --backdrop-blur:0px; --panel-width:42vw;
+    --ease-panel:cubic-bezier(.4,.64,.68,1);
+
+    --bg:#fafafa; --fg:#0b0b0c; --muted:#6b6b76; --line:#e2e2dd; --accent:#1b1b1b; --panel:#fff;
+  }
+  :root[data-theme="dark"] { --bg:#0c0c0e; --fg:#f2f2f4; --muted:#8a8a95; --line:#26262c; --accent:#e6e6e6; --panel:#131318; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  img { display:block; max-width:100%; }
+  a { color:inherit; text-decoration:none; }
+
+  /* ─────────── pattern 05 · bracket hover marks ─────────── */
+  .marked { position:relative; font-size:13px; letter-spacing:.07em; text-transform:uppercase; font-weight:500; }
+  .marked::before, .marked::after {
+    content:""; position:absolute; top:50%; margin-top:calc(var(--bracket-h) / -2);
+    width:var(--bracket-w); height:var(--bracket-h); border:1px solid currentColor; border-right-width:0;
+    opacity:0; transition:transform var(--dur) var(--ease), opacity var(--dur) var(--ease); }
+  .marked::before { left:calc(var(--bracket-gap) * -1); transform:translateX(var(--travel)); }
+  .marked::after { right:calc(var(--bracket-gap) * -1); transform:rotate(180deg) translateX(var(--travel)); }
+  .marked:hover::before, .marked:focus-visible::before, .marked[aria-current]::before { opacity:1; transform:translateX(0); }
+  .marked:hover::after, .marked:focus-visible::after, .marked[aria-current]::after { opacity:1; transform:rotate(180deg) translateX(0); }
+
+  /* ─────────── chrome ─────────── */
+  header.bar { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:28px;
+               padding:16px 22px; background:color-mix(in srgb, var(--bg) 90%, transparent);
+               backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  .brand { font-weight:600; letter-spacing:-.02em; font-size:15px; text-transform:none; }
+  header.bar nav { display:flex; gap:26px; align-items:center; }
+  header.bar .right { margin-left:auto; display:flex; gap:16px; align-items:center; }
+  .btn { font:inherit; font-size:12px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:5px 12px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+  /* ─────────── pattern 04 · :has() dimming mega menu ─────────── */
+  .mega { border-bottom:1px solid var(--line); background:var(--panel); display:none; }
+  .mega.open { display:grid; grid-template-columns:minmax(0,1fr) 340px; }
+  .lvl1 { list-style:none; margin:0; padding:26px 0; }
+  .lvl1 > li { position:relative; }
+  .lvl1 > li > a { display:flex; justify-content:space-between; gap:2rem; padding:1.3rem 2.2rem;
+                   font-size:clamp(18px,2.2vw,26px); letter-spacing:-.02em;
+                   border-top:1px solid color-mix(in srgb, var(--fg) 26%, transparent);
+                   transition:opacity var(--dur) var(--ease); position:relative; }
+  .lvl1 > li > a::before { content:""; position:absolute; top:-1px; left:0; width:100%; height:1px;
+                           background:var(--fg); transform:scaleX(0); transform-origin:top left;
+                           transition:transform var(--dur) ease-out; }
+  .lvl1:has(> li:hover) > li > a { opacity:var(--dim); }
+  .lvl1 > li:hover > a { opacity:1 !important; }
+  .lvl1 > li:hover > a::before { transform:scaleX(1); }
+  .lvl2 { list-style:none; margin:0; padding:30px 26px; position:absolute; right:0; top:0; width:340px;
+          min-height:100%; visibility:hidden; border-left:1px solid var(--line); }
+  .lvl2 > li { opacity:0; transform:translateX(calc(var(--slide) * -1)); margin-bottom:10px;
+               transition:transform var(--dur) ease-out var(--delay), opacity calc(var(--dur) * .6) linear var(--delay); }
+  .lvl1 > li:hover .lvl2 { visibility:visible; }
+  .lvl1 > li:hover .lvl2 > li { opacity:1; transform:none; }
+  .lvl2 a { font-size:14px; color:var(--muted); }
+  .lvl2 a:hover { color:var(--fg); }
+
+  /* ─────────── pattern 01 · pixel image reveal ─────────── */
+  .pixel { position:relative; width:100%; overflow:hidden; background:var(--line); }
+  .pixel.ar { aspect-ratio:3/2; }
+  .pixel canvas { display:block; position:absolute; left:0; width:100%; height:100%; top:0; }
+  .pixel.parallax canvas { height:120%; top:-10%; }
+
+  /* ─────────── layout ─────────── */
+  main { max-width:1180px; margin:0 auto; padding:0 22px; }
+  .hero { padding:8vh 0 5vh; display:grid; gap:22px; }
+  .hero h1 { font-size:clamp(34px,6.4vw,74px); line-height:1.02; letter-spacing:-.04em; margin:0; max-width:16ch; font-weight:500; }
+  .hero p { color:var(--muted); max-width:56ch; margin:0; }
+  .eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  section { padding:7vh 0; display:grid; gap:24px; }
+  section h2 { font-size:clamp(24px,3.4vw,40px); letter-spacing:-.032em; line-height:1.06; margin:0; max-width:20ch; font-weight:500; }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:22px; }
+
+  /* ─────────── pattern 03 · reciprocal-scale card ─────────── */
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:34px 26px; }
+  .card { container-type:inline-size; display:flex; flex-direction:column; row-gap:1.1rem; }
+  .card__frame { overflow:hidden; aspect-ratio:692/460; }
+  .card__frame, .card__frame img { transition:transform var(--dur) var(--ease); }
+  .card__frame img { width:100%; height:100%; object-fit:cover; }
+  @media (hover:hover) {
+    .card:hover .card__frame { transform:scale(var(--frame-x), var(--frame-y)); }
+    .card:hover .card__frame img { transform:scale(var(--img-x), var(--img-y)); }
+    .card:hover .card__info { transform:translateY(calc(var(--lift) * -1cqw)); padding-inline:var(--inset); }
+    .card:hover .card__title { padding-inline:var(--inset); }
+    .card:hover .card__icon { opacity:1; }
+  }
+  .card:focus-visible .card__frame { transform:scale(var(--frame-x), var(--frame-y)); }
+  .card:focus-visible .card__frame img { transform:scale(var(--img-x), var(--img-y)); }
+  .card__info { display:flex; justify-content:space-between; align-items:center; color:var(--muted);
+                font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:.6rem;
+                transition:transform var(--dur) var(--ease), padding var(--dur) var(--ease); }
+  .card__title { display:flex; justify-content:space-between; gap:.8rem; align-items:flex-start;
+                 transition:padding var(--dur) var(--ease); }
+  .card__title h3 { margin:0; font-size:clamp(18px,2.2cqw + 12px,25px); line-height:1.15; letter-spacing:-.02em; font-weight:500; max-width:88%; }
+  .card__icon { opacity:0; transition:opacity var(--dur) var(--ease); flex-shrink:0; }
+
+  /* ─────────── pattern 02 · native dialog slide-over ─────────── */
+  dialog.slideover { position:fixed; inset:0; margin:0; height:100dvh; max-height:none; max-width:none;
+    width:var(--panel-width); min-width:320px; padding:0; border:0; background:var(--panel); color:var(--fg);
+    overflow-y:auto; overscroll-behavior:contain; box-shadow:0 0 60px rgba(0,0,0,.16); margin-left:auto;
+    transform:translateX(100%);
+    transition:transform var(--duration-modal) var(--ease-panel),
+               display var(--duration-modal) allow-discrete, overlay var(--duration-modal) allow-discrete; }
+  dialog.slideover[open] { transform:none; }
+  @starting-style { dialog.slideover[open] { transform:translateX(100%); } }
+  dialog.slideover::backdrop { background:color-mix(in srgb,#000 40%,transparent); opacity:0;
+    backdrop-filter:blur(0px);
+    transition:opacity var(--duration-backdrop) var(--ease-panel), backdrop-filter var(--duration-backdrop) var(--ease-panel),
+               display var(--duration-backdrop) allow-discrete, overlay var(--duration-backdrop) allow-discrete; }
+  dialog.slideover[open]::backdrop { opacity:1; backdrop-filter:blur(var(--backdrop-blur)); }
+  @starting-style { dialog.slideover[open]::backdrop { opacity:0; backdrop-filter:blur(0px); } }
+  .panelInner { padding:22px 24px 40px; display:grid; gap:14px; align-content:start; }
+  .panelHead { display:flex; align-items:center; justify-content:space-between; gap:16px;
+               position:sticky; top:0; background:var(--panel); padding-bottom:12px; border-bottom:1px solid var(--line); }
+  .panelHead h3 { margin:0; font-size:17px; letter-spacing:-.02em; }
+  .lineItem { display:grid; grid-template-columns:64px 1fr auto; gap:14px; align-items:center;
+              padding:12px 0; border-bottom:1px solid var(--line); }
+  .lineItem img { width:64px; height:64px; object-fit:cover; }
+  .lineItem span { color:var(--muted); font-size:13px; }
+
+  footer { border-top:1px solid var(--line); margin-top:8vh; padding:36px 22px 56px; color:var(--muted);
+           font-size:12px; display:grid; gap:8px; text-align:center; }
+  footer a { border-bottom:1px solid var(--line); }
+  footer a:hover { color:var(--fg); border-color:var(--fg); }
+  .notice { position:fixed; left:12px; bottom:12px; z-index:30; font-size:10.5px; color:var(--muted);
+            background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 11px; }
+  .notice b { color:var(--fg); font-weight:500; }
+
+  @media (max-width:820px) { .mega.open { grid-template-columns:1fr; } .lvl2 { position:static; width:auto; border-left:0; border-top:1px solid var(--line); min-height:0; } }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a>
+  <nav>
+    <a class="marked" href="#products" id="productsLink" aria-current="page">Products</a>
+    <a class="marked" href="#projects">Projects</a>
+    <a class="marked" href="#about">About</a>
+    <a class="marked" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">Contact</a>
+  </nav>
+  <span class="right">
+    <button class="btn" id="megaBtn" type="button" aria-expanded="false">Catalogue</button>
+    <button class="btn" id="cartBtn" type="button">Selection (3)</button>
+    <button class="btn" id="themeBtn" type="button">Theme</button>
+  </span>
+</header>
+
+<!-- pattern 04 -->
+<div class="mega" id="mega">
+  <ul class="lvl1">
+    <li><a href="#">Lorem <span aria-hidden="true">→</span></a>
+      <ul class="lvl2"><li style="--delay:0ms"><a href="#">Consectetur</a></li><li style="--delay:40ms"><a href="#">Adipiscing</a></li><li style="--delay:80ms"><a href="#">Eiusmod</a></li><li style="--delay:120ms"><a href="#">Tempor</a></li></ul></li>
+    <li><a href="#">Ipsum <span aria-hidden="true">→</span></a>
+      <ul class="lvl2"><li style="--delay:0ms"><a href="#">Incididunt</a></li><li style="--delay:40ms"><a href="#">Labore</a></li><li style="--delay:80ms"><a href="#">Dolore</a></li></ul></li>
+    <li><a href="#">Dolor <span aria-hidden="true">→</span></a>
+      <ul class="lvl2"><li style="--delay:0ms"><a href="#">Aliqua</a></li><li style="--delay:40ms"><a href="#">Veniam</a></li><li style="--delay:80ms"><a href="#">Nostrud</a></li></ul></li>
+    <li><a href="#">Amet <span aria-hidden="true">→</span></a>
+      <ul class="lvl2"><li style="--delay:0ms"><a href="#">Ullamco</a></li><li style="--delay:40ms"><a href="#">Laboris</a></li><li style="--delay:80ms"><a href="#">Aliquip</a></li></ul></li>
+  </ul>
+</div>
+
+<main>
+  <section class="hero" id="products">
+    <span class="eyebrow">Lorem ipsum dolor</span>
+    <h1>Sed ut perspiciatis unde omnis iste natus error</h1>
+    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.</p>
+  </section>
+
+  <!-- pattern 01 -->
+  <div class="pixel ar" data-pixel data-src="https://picsum.photos/seed/cera-hero/1600/1067"><canvas></canvas></div>
+
+  <section>
+    <h2>At vero eos et accusamus et iusto odio dignissimos</h2>
+    <div class="two">
+      <div class="pixel ar" data-pixel data-src="https://picsum.photos/seed/cera-a/1200/800"><canvas></canvas></div>
+      <div class="pixel ar" data-pixel data-src="https://picsum.photos/seed/cera-b/1200/800"><canvas></canvas></div>
+    </div>
+  </section>
+
+  <!-- pattern 03 -->
+  <section id="projects">
+    <h2>Quis autem vel eum iure reprehenderit</h2>
+    <div class="cards">
+      <a class="card" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">
+        <div class="card__frame"><img src="https://picsum.photos/seed/cera-p1/1000/665" alt=""></div>
+        <div class="card__info"><span>Residential</span><span>2024</span><span>Lorem</span></div>
+        <div class="card__title"><h3>Consectetur adipiscing elit sed do</h3><span class="card__icon">↗</span></div>
+      </a>
+      <a class="card" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">
+        <div class="card__frame"><img src="https://picsum.photos/seed/cera-p2/1000/665" alt=""></div>
+        <div class="card__info"><span>Commercial</span><span>2023</span><span>Ipsum</span></div>
+        <div class="card__title"><h3>Eiusmod tempor incididunt ut labore</h3><span class="card__icon">↗</span></div>
+      </a>
+      <a class="card" href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">
+        <div class="card__frame"><img src="https://picsum.photos/seed/cera-p3/1000/665" alt=""></div>
+        <div class="card__info"><span>Public</span><span>2025</span><span>Dolor</span></div>
+        <div class="card__title"><h3>Magna aliqua ut enim ad minim</h3><span class="card__icon">↗</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section id="about">
+    <h2>Nam libero tempore cum soluta nobis est eligendi</h2>
+    <div class="pixel ar parallax" data-pixel data-parallax data-src="https://picsum.photos/seed/cera-wide/1800/1200"><canvas></canvas></div>
+    <p>Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.</p>
+  </section>
+</main>
+
+<!-- pattern 02 -->
+<dialog class="slideover" id="panel">
+  <div class="panelInner">
+    <div class="panelHead"><h3>Selection</h3><button class="btn" id="closePanel" autofocus>Close</button></div>
+    <div class="lineItem"><img src="https://picsum.photos/seed/sel-1/128/128" alt=""><b>Lorem ipsum</b><span>—</span></div>
+    <div class="lineItem"><img src="https://picsum.photos/seed/sel-2/128/128" alt=""><b>Dolor sit amet</b><span>—</span></div>
+    <div class="lineItem"><img src="https://picsum.photos/seed/sel-3/128/128" alt=""><b>Consectetur</b><span>—</span></div>
+    <p style="color:var(--muted)">Escape closes it, focus is trapped while it is open and the page behind is inert — all from the platform.</p>
+  </div>
+</dialog>
+
+<footer>
+  <span>Technical copy · placeholder content only</span>
+  <span>Images <a href="https://picsum.photos" target="_blank" rel="noreferrer noopener">picsum.photos</a> · text lorem ipsum · links <a href="https://www.designmd.co" target="_blank" rel="noreferrer noopener">designmd.co</a></span>
+</footer>
+
+<div class="notice">technical copy · patterns <b>01–05</b> from the www.ceragres.ca distillation</div>
+
+<script>
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ═══ chrome ═══ */
+document.getElementById('themeBtn').addEventListener('click', () => {
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+});
+const mega = document.getElementById('mega');
+const megaBtn = document.getElementById('megaBtn');
+megaBtn.addEventListener('click', () => {
+  const open = mega.classList.toggle('open');
+  megaBtn.setAttribute('aria-expanded', String(open));
+});
+
+/* ═══ pattern 02 · native dialog slide-over ═══ */
+const panel = document.getElementById('panel');
+document.getElementById('cartBtn').addEventListener('click', () => panel.showModal());
+document.getElementById('closePanel').addEventListener('click', () => panel.close());
+panel.addEventListener('click', e => {
+  const r = panel.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) panel.close();
+});
+
+/* ═══ pattern 01 · pixel image reveal ═══ */
+const PIXEL = { startPixelSize: 80, startBlur: 6, duration: 2200, threshold: 0.1, parallax: 20 };
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+function drawCover(ctx, src, w, h) {
+  const sr = src.width / src.height, tr = w / h;
+  let dw = w, dh = h, dx = 0, dy = 0;
+  if (tr > sr) { dh = w / sr; dy = (h - dh) / 2; } else { dw = h * sr; dx = (w - dw) / 2; }
+  ctx.drawImage(src, dx, dy, dw, dh);
+}
+
+class PixelImage {
+  constructor(wrap) {
+    this.wrap = wrap;
+    this.canvas = wrap.querySelector('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.small = document.createElement('canvas');
+    this.smallCtx = this.small.getContext('2d');
+    this.state = { pixelSize: PIXEL.startPixelSize, blur: PIXEL.startBlur };
+    this.parallax = wrap.hasAttribute('data-parallax');
+    this.img = new Image();
+    this.img.crossOrigin = 'anonymous';
+    this.img.onload = () => { this.ready = true; this.resize(); this.arm(); };
+    this.img.src = wrap.dataset.src;
+    new ResizeObserver(() => this.resize()).observe(this.canvas);
+    if (this.parallax) addEventListener('scroll', () => this.drift(), { passive: true });
+  }
+  resize() {
+    const r = this.canvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const dpr = devicePixelRatio || 1;
+    this.canvas.width = Math.round(r.width * dpr);
+    this.canvas.height = Math.round(r.height * dpr);
+    this.draw();
+  }
+  draw() {
+    if (!this.ready) return;
+    const { canvas: c, ctx } = this, w = c.width, h = c.height, dpr = devicePixelRatio || 1;
+    if (!w || !h) return;
+    ctx.clearRect(0, 0, w, h);
+    if (this.state.pixelSize <= 1.05) {
+      ctx.filter = 'none'; ctx.imageSmoothingEnabled = true; drawCover(ctx, this.img, w, h); return;
+    }
+    const f = this.state.pixelSize * dpr;
+    const sw = Math.max(1, Math.round(w / f)), sh = Math.max(1, Math.round(h / f));
+    this.small.width = sw; this.small.height = sh;
+    this.smallCtx.imageSmoothingEnabled = true;
+    drawCover(this.smallCtx, this.img, sw, sh);
+    ctx.filter = this.state.blur > .1 ? `blur(${this.state.blur * dpr}px)` : 'none';
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(w / 2, h / 2); ctx.scale(f, f);
+    ctx.drawImage(this.small, -sw / 2, -sh / 2, sw, sh);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none';
+  }
+  arm() {
+    this.io?.disconnect(); cancelAnimationFrame(this.raf);
+    this.state.pixelSize = reduced ? 1 : PIXEL.startPixelSize;
+    this.state.blur = reduced ? 0 : PIXEL.startBlur;
+    this.draw();
+    if (reduced) return;
+    this.io = new IntersectionObserver(es => {
+      if (!es[0].isIntersecting) return;
+      this.io.disconnect(); this.play();
+    }, { threshold: PIXEL.threshold });
+    this.io.observe(this.canvas);
+  }
+  play() {
+    const from = { ...this.state }, t0 = performance.now();
+    const step = now => {
+      const t = Math.min((now - t0) / PIXEL.duration, 1), e = easeInOut(t);
+      this.state.pixelSize = from.pixelSize + (1 - from.pixelSize) * e;
+      this.state.blur = from.blur + (0 - from.blur) * e;
+      this.draw();
+      if (t < 1) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  }
+  drift() {
+    if (reduced) return;
+    const r = this.wrap.getBoundingClientRect();
+    const p = Math.min(1, Math.max(0, (innerHeight - r.top) / (innerHeight + r.height)));
+    this.canvas.style.transform = `translateY(${(p * PIXEL.parallax).toFixed(2)}%)`;
+  }
+}
+const pixels = [...document.querySelectorAll('[data-pixel]')].map(w => new PixelImage(w));
+
+/* testing seam */
+window.COPY = { pixels, PIXEL, panel };
+</script>
+</body>
+</html>

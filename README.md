@@ -31,6 +31,8 @@ ui-distilled/example.com/
 
 Every demo runs from `file://`, shows exactly one pattern, exposes its interesting numbers as CSS custom properties or a `CONFIG` object, and degrades under `prefers-reduced-motion`.
 
+Each run can also ship `site/index.html` — a **technical copy**: one page composing every distilled pattern into a working layout, with [picsum.photos](https://picsum.photos) imagery, lorem ipsum copy and neutral links. It demonstrates the patterns together; it is not a reproduction of the original, and carries no branding or content from it.
+
 ### Live examples
 
 Two runs, deployed as static folders — this is exactly what the tool emits:

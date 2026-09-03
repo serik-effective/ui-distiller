@@ -23,6 +23,11 @@ for (const p of patterns) {
 }
 
 const stats = data.stats || {};
+
+// A run may ship a "technical copy": one page composing every distilled pattern,
+// with placeholder content. Link it from the gallery when it is there.
+let hasCopy = false;
+try { await access(join(root, 'site', 'index.html')); hasCopy = true; } catch { /* optional */ }
 const cards = patterns.map(p => `      <li class="card">
         <a class="hit" href="patterns/${esc(p.slug)}/index.html">
           <span class="num">[${esc(p.number || '')}]</span>
@@ -101,7 +106,7 @@ const html = `<!doctype html>
         ${esc(data.analyzedAt || '')}
       </div>
     </header>
-    <p class="links"><a href="REPORT.md">REPORT.md</a><a href="patterns.json">patterns.json</a></p>
+    <p class="links"><a href="REPORT.md">REPORT.md</a><a href="patterns.json">patterns.json</a>${hasCopy ? '<a href="site/index.html">technical copy →</a>' : ''}</p>
     <ul>
 ${cards}
     </ul>
