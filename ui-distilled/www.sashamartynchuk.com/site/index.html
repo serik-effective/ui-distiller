@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice — technical copy</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    /* fold */
+    --fold-zone:340; --fold-angle:36; --fold-round:300; --fold-persp:1100px; --fold-dir:1;
+    --fold-fade-in:240; --fold-fade-out:760;
+    /* burst */
+    --cx:50%; --cy:56%; --ray-gap:9deg; --ray-width:.8deg; --ray-blur:6px; --ray-size:96vmax; --ray-spin:140s;
+    --intensity:1;
+    /* pulse */
+    --squash:.75; --squash-ratio:.33;
+
+    --bg:#000; --fg:#fff; --muted:#8b8b8b; --line:#1e1e1e; --accent:#a78bfa; --panel:#0e0e0e;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  img { display:block; max-width:100%; }
+  a { color:inherit; text-decoration:none; }
+
+  /* chrome */
+  .bar { position:fixed; inset:0 0 auto 0; z-index:40; display:flex; align-items:center; gap:16px;
+         padding:14px 20px; pointer-events:none; }
+  .bar > * { pointer-events:auto; }
+  .brand { font-weight:600; letter-spacing:-.02em; }
+  .nav { margin:0 auto; display:flex; gap:2px; background:rgba(255,255,255,.07); border-radius:999px; padding:4px;
+         backdrop-filter:blur(10px); }
+  .nav a { font-size:13px; padding:6px 14px; border-radius:999px; color:#cfcfcf; }
+  .nav a[aria-current] { background:#fff; color:#000; }
+  .mail { font-size:13px; color:#dcdcdc; }
+
+  /* ── pattern 02 · focus burst (hero backdrop) ── */
+  .hero { position:relative; height:100vh; display:grid; place-items:center; overflow:hidden; isolation:isolate; }
+  .hero .layer { position:absolute; left:var(--cx); top:var(--cy); translate:-50% -50%; aspect-ratio:1;
+                 border-radius:50%; pointer-events:none; mix-blend-mode:screen; }
+  .rays { width:var(--ray-size); filter:blur(var(--ray-blur)); opacity:calc(.85 * var(--intensity));
+    background:repeating-conic-gradient(from 0deg,
+      #fff0 0deg calc(var(--ray-gap)/2 - var(--ray-width)),
+      rgba(219,232,255,.5) calc(var(--ray-gap)/2 - var(--ray-width)) calc(var(--ray-gap)/2),
+      #fff0 calc(var(--ray-gap)/2) var(--ray-gap));
+    -webkit-mask-image:radial-gradient(circle,#000 6%,rgba(0,0,0,.55) 26%,transparent 58%);
+            mask-image:radial-gradient(circle,#000 6%,rgba(0,0,0,.55) 26%,transparent 58%);
+    animation:spin var(--ray-spin) linear infinite; }
+  @keyframes spin { to { rotate:360deg } }
+  .glow { width:62vmax; filter:blur(48px) saturate(1.45) brightness(1.15); opacity:calc(.5 * var(--intensity));
+    background:radial-gradient(circle,rgba(210,252,255,.95) 0%,rgba(92,190,255,.75) 20%,rgba(124,61,255,.55) 44%,rgba(58,20,160,.28) 66%,transparent 82%); }
+  .ring { width:26vmax; filter:blur(16px) saturate(1.6) brightness(1.3); opacity:calc(.8 * var(--intensity));
+    background:radial-gradient(circle,transparent 54%,rgba(170,248,255,1) 61%,rgba(92,160,255,.85) 69%,rgba(140,70,255,.4) 78%,transparent 86%); }
+
+  /* ── pattern 03 · warped display type ── */
+  .hero__type { position:relative; z-index:3; display:grid; justify-items:center; gap:10px; text-align:center; padding:0 20px; }
+  #warp { width:min(92vw,1100px); height:min(38vh,300px); display:block; }
+  .hero__sub { color:#d7d9e2; font-size:14px; }
+  .hero__fallback { display:none; font-size:clamp(40px,10vw,120px); font-weight:800; letter-spacing:-.045em;
+                    text-transform:uppercase; line-height:.9; }
+
+  /* ── pattern 01 · cylindrical page fold ── */
+  main { max-width:1040px; margin:0 auto; padding:10vh 24px 60vh; }
+  .lede { max-width:58ch; color:var(--muted); margin:0 0 7vh; }
+  .lede h2 { color:var(--fg); font-size:clamp(26px,4.2vw,46px); line-height:1.04; letter-spacing:-.035em;
+             margin:0 0 12px; max-width:17ch; font-weight:600; }
+  .fold { perspective:var(--fold-persp); perspective-origin:50% 50%; }
+  .row { transform-origin:50% 0; will-change:transform, opacity; backface-visibility:hidden; }
+  .card { border:1px solid var(--line); background:var(--panel); border-radius:14px; overflow:hidden;
+          margin:0 0 22px; display:grid; grid-template-columns:minmax(0,1fr) 260px; }
+  .card__body { padding:26px; display:grid; gap:9px; align-content:center; }
+  .card__body b { font-size:clamp(17px,2vw,23px); letter-spacing:-.02em; font-weight:600; }
+  .card__body span { color:var(--muted); font-size:13.5px; max-width:52ch; }
+  .card__body .kind { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); }
+  .card__thumb img { width:100%; height:100%; object-fit:cover; aspect-ratio:4/3; }
+
+  /* ── pattern 05 · elastic pulse ── */
+  .pulse { display:inline-flex; align-items:center; gap:8px; font:inherit; color:var(--fg);
+           background:var(--panel); border:1px solid var(--line); border-radius:999px;
+           padding:.7em 1.3em; cursor:pointer; will-change:transform; transform-origin:50% 50%; }
+  .pulse:hover { border-color:var(--fg); }
+  .pulse:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+
+  /* ── pattern 04 · tier badge ── */
+  .tier { position:fixed; right:16px; bottom:52px; z-index:30; font-size:11px; color:var(--muted);
+          border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:5px 11px; }
+  .tier b { color:var(--fg); font-weight:500; }
+
+  .notice { position:fixed; left:16px; bottom:52px; z-index:30; font-size:10.5px; color:var(--muted);
+            background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:5px 11px; }
+  .notice b { color:var(--fg); font-weight:500; }
+  footer { border-top:1px solid var(--line); padding:34px 24px 70px; text-align:center; color:var(--muted); font-size:12px; }
+  footer a { border-bottom:1px solid var(--line); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rays { animation:none; }
+    .row { transform:none !important; opacity:1 !important; }
+    .pulse { transform:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="brand">practice</span>
+  <nav class="nav">
+    <a href="#" aria-current="page">Intro</a><a href="#work">Work</a><a href="#about">About</a>
+  </nav>
+  <span class="mail">hello@example.invalid</span>
+</div>
+
+<section class="hero">
+  <div class="layer glow"></div>
+  <div class="layer rays"></div>
+  <div class="layer ring"></div>
+  <div class="hero__type">
+    <canvas id="warp"></canvas>
+    <div class="hero__fallback" id="warpFallback">Practice</div>
+    <p class="hero__sub" id="heroSub">A technical copy composing five distilled patterns.</p>
+  </div>
+</section>
+
+<main>
+  <div class="lede">
+    <h2 id="ledeTitle">Rows wrap over the bottom edge.</h2>
+    <p id="ledeCopy">Scroll on: each row curves onto a cylinder as it reaches the fold band, then continues along the tangent, fading by depth rather than by position.</p>
+    <div class="actions">
+      <button class="pulse">Primary action</button>
+      <button class="pulse" style="font-size:12px">Small</button>
+      <button class="pulse" style="font-size:22px">Large</button>
+    </div>
+  </div>
+  <div class="fold" id="fold"></div>
+</main>
+
+<footer>
+  <span>Technical copy · placeholder content only · images <a href="https://picsum.photos" target="_blank" rel="noreferrer noopener">picsum.photos</a></span>
+</footer>
+
+<div class="tier" id="tierBadge">tier <b>probing…</b></div>
+<div class="notice">technical copy · patterns <b>01–05</b> from the sashamartynchuk.com distillation · <span id="credit">placeholder copy</span></div>
+
+<script>
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ═══ content: a design-md pack when one is present ═══ */
+const ITEMS = [
+  { label: 'Ink Practice', kind: 'Layout', blurb: 'Rows are mapped onto a cylinder as they reach the fold band, so the surface curves rather than tilting.' },
+  { label: 'Cobalt Field', kind: 'Colour', blurb: 'Every layer of the burst is a gradient composited in screen blend, so overlaps add light instead of stacking alpha.' },
+  { label: 'Chalk Atlas', kind: 'Typography', blurb: 'Display type is drawn to a canvas and bent by integrating a curvature profile down the glyph height.' },
+  { label: 'Ember Method', kind: 'Motion', blurb: 'Controls squash by a share of their own type size, so every size deforms by the same typographic amount.' },
+  { label: 'Verdant Press', kind: 'Surface', blurb: 'Opacity is driven by depth through a smoothstep, never by raw distance down the page.' },
+  { label: 'Slate Works', kind: 'Layout', blurb: 'The vanishing point is recomputed each frame from the scroll position, keeping the geometry addressed to the reader.' },
+  { label: 'Violet Archive', kind: 'Colour', blurb: 'Sizes are expressed in viewport-max units so the composition survives any aspect ratio.' },
+  { label: 'Ink Studio', kind: 'Motion', blurb: 'A re-trigger lock keeps a spring from restarting while it is still settling.' },
+];
+
+function applyPack(pack) {
+  if (!pack?.items?.length) return;
+  pack.items.slice(0, ITEMS.length).forEach((it, i) => {
+    ITEMS[i].label = it.label || ITEMS[i].label;
+    ITEMS[i].kind = it.kind || ITEMS[i].kind;
+    ITEMS[i].blurb = it.blurb || ITEMS[i].blurb;
+  });
+  document.getElementById('ledeTitle').textContent = ITEMS[0].label;
+  document.getElementById('ledeCopy').textContent = ITEMS[0].blurb;
+  document.getElementById('heroSub').textContent = ITEMS[1].blurb;
+  const credit = document.getElementById('credit');
+  if (credit) credit.textContent = 'copy sampled from design-md (' + pack.items.slice(0, 3).map(i => i.name).join(', ') + ', MIT)';
+}
+
+/* ═══ pattern 01 · cylindrical page fold ═══ */
+const foldEl = document.getElementById('fold');
+let rows = [];
+function buildRows() {
+  foldEl.innerHTML = ITEMS.map((it, i) => `
+    <div class="row">
+      <article class="card">
+        <div class="card__body">
+          <span class="kind">${it.kind}</span><b>${it.label}</b><span>${it.blurb}</span>
+        </div>
+        <div class="card__thumb"><img src="https://picsum.photos/seed/fold-${i + 1}/900/675" alt="" loading="lazy"></div>
+      </article>
+    </div>`).join('');
+  rows = [...foldEl.querySelectorAll('.row')].map(el => ({ el, mid: 0, last: '' }));
+  measure();
+}
+
+const RAD = Math.PI / 180;
+const docTop = el => { let y = 0; for (let n = el; n; n = n.offsetParent) y += n.offsetTop; return y; };
+let containerTop = 0, lastY = -1;
+function measure() {
+  containerTop = docTop(foldEl);
+  for (const r of rows) r.mid = docTop(r.el) + r.el.offsetHeight / 2;
+  lastY = -1;
+}
+
+function updateFold() {
+  if (reduced) return;
+  const vh = innerHeight, y = scrollY;
+  if (y === lastY) return;
+  lastY = y;
+  const zone = Math.min(340, vh * 0.36);
+  const angle = 36 * RAD;
+  const round = Math.min(300, angle > 0 ? zone / angle : 1e6);
+  const line = vh - zone, arc = round * angle;
+  foldEl.style.perspectiveOrigin = `50% ${y + vh / 2 - containerTop}px`;
+
+  for (const r of rows) {
+    const past = r.mid - y - line;
+    let transform = '', opacity = 1;
+    if (past > 0) {
+      let dy, z, bend;
+      if (past < arc) { bend = past / round; dy = round * Math.sin(bend) - past; z = -round * (1 - Math.cos(bend)); }
+      else { bend = angle; const L = past - arc;
+             dy = round * Math.sin(angle) + L * Math.cos(angle) - past;
+             z = -round * (1 - Math.cos(angle)) - L * Math.sin(angle); }
+      transform = `translate3d(0, ${dy.toFixed(2)}px, ${z.toFixed(2)}px) rotateX(${(-bend / RAD).toFixed(3)}deg)`;
+      const t = Math.min(1, Math.max(0, (-z - 240) / 520));
+      opacity = 1 - t * t * (3 - 2 * t);
+    }
+    const key = transform + '|' + opacity.toFixed(3);
+    if (key !== r.last) { r.last = key; r.el.style.transform = transform; r.el.style.opacity = opacity === 1 ? '' : opacity.toFixed(3); }
+  }
+}
+let foldRaf = 0;
+const requestFold = () => { cancelAnimationFrame(foldRaf); foldRaf = requestAnimationFrame(updateFold); };
+addEventListener('scroll', requestFold, { passive: true });
+addEventListener('resize', () => { measure(); requestFold(); });
+
+/* ═══ pattern 05 · elastic pulse ═══ */
+const coarse = matchMedia('(hover: none) and (pointer: coarse)').matches;
+const elasticOut = (t, p = 0.3) => t === 0 || t === 1 ? t
+  : Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
+function pulse(el) {
+  if (reduced || coarse || el._locked) return;
+  el._locked = true;
+  setTimeout(() => { el._locked = false; }, 500);
+  const w = el.offsetWidth, h = el.offsetHeight, fs = parseFloat(getComputedStyle(el).fontSize);
+  const c = 0.75 * fs, tx = (w + c) / w, ty = (h - c * 0.33) / h;
+  cancelAnimationFrame(el._raf);
+  const t0 = performance.now();
+  const step = now => {
+    const e = now - t0;
+    let sx, sy;
+    if (e < 100) { const t = 1 - Math.pow(1 - e / 100, 2); sx = 1 + (tx - 1) * t; sy = 1 + (ty - 1) * t; }
+    else {
+      const t = Math.min(1, (e - 100) / 1000), k = elasticOut(t);
+      sx = tx + (1 - tx) * k; sy = ty + (1 - ty) * k;
+      if (t >= 1) { el.style.transform = ''; return; }
+    }
+    el.style.transform = `scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`;
+    el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+function attachPulse(scope = document) {
+  for (const el of scope.querySelectorAll('.pulse')) {
+    if (el._bound) continue;
+    el._bound = true;
+    el.addEventListener('mouseenter', () => pulse(el));
+  }
+}
+new MutationObserver(() => attachPulse()).observe(document.body, { childList: true, subtree: true });
+
+/* ═══ pattern 04 · GPU tier probe ═══ */
+const SOFTWARE = /swiftshader|llvmpipe|softpipe|software|basic render/i;
+const FAST = /apple\s*(m\d|a\d{2}|gpu)|nvidia|geforce|rtx|gtx|quadro|radeon\s*(rx|pro)|intel.*arc/i;
+const WORKER_SRC = `
+  let r='NO-GL';
+  try { const c=new OffscreenCanvas(1,1), a={failIfMajorPerformanceCaveat:true};
+        const gl=c.getContext('webgl2',a)||c.getContext('webgl',a);
+        if(gl){const d=gl.getExtension('WEBGL_debug_renderer_info');
+          r=String(d?gl.getParameter(d.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER));
+          gl.getExtension('WEBGL_lose_context')?.loseContext();} else r='CAVEAT';
+  } catch(e){ r='NO-GL'; }
+  postMessage(r);`;
+function probeSync() {
+  try {
+    const c = document.createElement('canvas'), a = { failIfMajorPerformanceCaveat: true };
+    const gl = c.getContext('webgl2', a) || c.getContext('webgl', a);
+    if (!gl) return { renderer: '(refused)', software: true };
+    const d = gl.getExtension('WEBGL_debug_renderer_info');
+    const r = String(d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return { renderer: r, software: SOFTWARE.test(r) };
+  } catch { return { renderer: '(threw)', software: true }; }
+}
+function probeTier() {
+  return new Promise(resolve => {
+    if (typeof OffscreenCanvas === 'undefined' || typeof Worker === 'undefined') return resolve(probeSync());
+    let done = false, w;
+    const finish = r => { if (!done) { done = true; w?.terminate(); resolve(r); } };
+    try {
+      w = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })));
+      w.onmessage = e => {
+        const r = String(e.data);
+        finish(r === 'NO-GL' || r === 'CAVEAT' ? probeSync() : { renderer: r, software: SOFTWARE.test(r) });
+      };
+      w.onerror = () => finish(probeSync());
+      setTimeout(() => finish(probeSync()), 5000);
+    } catch { finish(probeSync()); }
+  });
+}
+
+/* ═══ pattern 03 · warped display type (heavy tier only) ═══ */
+function startWarp() {
+  const canvas = document.getElementById('warp');
+  const gl = canvas.getContext('webgl2', { alpha: true, antialias: true });
+  if (!gl) { canvas.style.display = 'none'; document.getElementById('warpFallback').style.display = 'block'; return false; }
+  const STEPS = 24, COLS = 6, ROWS = 260;
+  const VERT = `#version 300 es
+  precision highp float; in vec2 aUV;
+  uniform vec2 uRes, uCentre; uniform float uTop, uHeight, uHalf, uAngle, uEase, uVary, uPersp;
+  out vec2 vUV;
+  void main(){ vUV=aUV; vec2 p=aUV*uRes;
+    float A=uAngle*(1.0+uVary*cos((p.x-uCentre.x)/max(uHalf,1.0)*1.9+0.7));
+    float y=p.y, z=0.0, v=p.y-uTop;
+    if(v>0.0&&abs(A)>1e-4&&uHeight>1.0){ float dv=v/float(${STEPS}); float ay=0.0, az=0.0;
+      for(int i=0;i<${STEPS};i++){ float s=(float(i)+0.5)*dv; float t=clamp(s/uHeight,0.0,1.0);
+        float th=A*pow(t,uEase); ay+=cos(th); az+=sin(th);} y=uTop+ay*dv; z=-az*dv; }
+    float sc=uPersp/max(uPersp-z,uPersp*0.25);
+    vec2 sp=uCentre+(vec2(p.x,y)-uCentre)*sc;
+    gl_Position=vec4(sp.x/uRes.x*2.0-1.0, 1.0-sp.y/uRes.y*2.0, 0.0, 1.0); }`;
+  const FRAG = `#version 300 es
+  precision highp float; in vec2 vUV; uniform sampler2D uTex; out vec4 frag;
+  void main(){ float a=texture(uTex,vUV).a; frag=vec4(vec3(a),a); }`;
+  const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
+  gl.bindAttribLocation(prog, 0, 'aUV');
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  const verts = new Float32Array((COLS + 1) * (ROWS + 1) * 2);
+  let k = 0;
+  for (let r = 0; r <= ROWS; r++) for (let c = 0; c <= COLS; c++) { verts[k++] = c / COLS; verts[k++] = r / ROWS; }
+  const idx = new Uint16Array(COLS * ROWS * 6);
+  let m = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const a = r * (COLS + 1) + c, b = a + 1, d = a + COLS + 1, e = d + 1;
+    idx[m++] = a; idx[m++] = d; idx[m++] = b; idx[m++] = b; idx[m++] = d; idx[m++] = e;
+  }
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  for (const [k2, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+                         [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k2, v);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  const ctx2d = document.createElement('canvas').getContext('2d');
+  let ink = { top: 0, height: 1, half: 1, cx: 0 };
+
+  function paint(w, h) {
+    ctx2d.canvas.width = w; ctx2d.canvas.height = h;
+    const c = ctx2d, word = 'PRACTICE';
+    c.clearRect(0, 0, w, h);
+    const size = Math.min(h * 0.7, w / word.length * 1.55);
+    c.font = `900 ${size}px ui-sans-serif, "Helvetica Neue", Arial, sans-serif`;
+    c.fillStyle = '#fff'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    const chars = [...word], track = size * 0.02;
+    const widths = chars.map(ch => c.measureText(ch).width);
+    const total = widths.reduce((a, b) => a + b, 0) + track * (chars.length - 1);
+    const mm = c.measureText(word);
+    const asc = mm.fontBoundingBoxAscent || size * 0.8, desc = mm.fontBoundingBoxDescent || size * 0.2;
+    const base = h / 2 - (asc + desc) / 2 + asc;
+    let x = w / 2 - total / 2;
+    chars.forEach((ch, i) => { c.fillText(ch, x, base); x += widths[i] + track; });
+    ink = { top: base - (mm.actualBoundingBoxAscent || size * 0.72), height: Math.max(1, (mm.actualBoundingBoxAscent || size * 0.72) + (mm.actualBoundingBoxDescent || 0)), half: total / 2, cx: w / 2 };
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, ctx2d.canvas);
+  }
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+    if (!w || !h) return;
+    canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); paint(w, h);
+  }
+  const U = n => gl.getUniformLocation(prog, n);
+  const t0 = performance.now();
+  (function frame(now) {
+    requestAnimationFrame(frame);
+    const t = (now - t0) / 1000;
+    const angle = reduced ? 0 : (34 * Math.PI / 180) * (Math.sin(t * 0.5) * 0.5 + 0.5);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog); gl.bindVertexArray(vao);
+    gl.uniform2f(U('uRes'), canvas.width, canvas.height);
+    gl.uniform2f(U('uCentre'), ink.cx, canvas.height / 2);
+    gl.uniform1f(U('uTop'), ink.top); gl.uniform1f(U('uHeight'), ink.height);
+    gl.uniform1f(U('uHalf'), ink.half); gl.uniform1f(U('uAngle'), angle);
+    gl.uniform1f(U('uEase'), 1.7); gl.uniform1f(U('uVary'), 0.09);
+    gl.uniform1f(U('uPersp'), 420 * (devicePixelRatio || 1));
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(U('uTex'), 0);
+    gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+  })(performance.now());
+  addEventListener('resize', resize);
+  resize();
+  return true;
+}
+
+/* ═══ boot ═══ */
+buildRows();
+attachPulse();
+updateFold();
+
+fetch('content.json').then(r => (r.ok ? r.json() : null)).then(pack => {
+  applyPack(pack); buildRows(); attachPulse(); requestFold();
+}).catch(() => {});
+
+probeTier().then(res => {
+  const heavy = !res.software && !matchMedia('(pointer: coarse)').matches && !matchMedia('(max-width: 64rem)').matches;
+  document.getElementById('tierBadge').innerHTML =
+    'tier <b>' + (heavy ? 'heavy' : 'light') + '</b> · ' + (res.software ? 'software renderer' : 'hardware');
+  // the warp is the expensive one, so it only runs on the heavy tier
+  if (heavy) { if (!startWarp()) document.getElementById('warpFallback').style.display = 'block'; }
+  else { document.getElementById('warp').style.display = 'none'; document.getElementById('warpFallback').style.display = 'block'; }
+});
+
+window.COPY = { updateFold, pulse, probeTier, ITEMS };
+</script>
+</body>
+</html>

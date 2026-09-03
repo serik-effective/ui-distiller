@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cylindrical page fold — UI Distiller</title>
+<style>
+  :root {
+    --fold-zone: 340;     /* px from the bottom where the fold starts, capped at 36% of the viewport */
+    --fold-angle: 36;     /* degrees the surface has turned by the time it leaves the arc  */
+    --fold-round: 300;    /* cylinder radius: bigger = a gentler, longer curve             */
+    --fold-persp: 1100px; /* perspective on the container                                  */
+    --fold-dir: 1;        /* 1 folds away from the reader, -1 folds toward                 */
+    --fold-fade-in: 240;  /* depth at which the fade begins                                */
+    --fold-fade-out: 760; /* depth at which it is fully faded                              */
+
+    --bg:#000; --fg:#fff; --muted:#8b8b8b; --line:#222; --accent:#a78bfa; --panel:#111;
+  }
+  :root[data-theme="light"] { --bg:#f4f4f2; --fg:#111; --muted:#666; --line:#dcdcd6; --accent:#5b3df5; --panel:#fff; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:30; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:12px 18px; background:color-mix(in srgb, var(--bg) 84%, transparent); backdrop-filter:blur(8px);
+           border-bottom:1px solid var(--line); }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:1000px; margin:0 auto; padding:120px 24px 60vh; }
+  .lede { max-width:60ch; margin:0 0 8vh; color:var(--muted); }
+  .lede h2 { font-size:clamp(28px,4.6vw,52px); line-height:1.03; letter-spacing:-.04em; margin:0 0 14px;
+             color:var(--fg); max-width:16ch; font-weight:600; }
+
+  /* ---------- the pattern ----------
+     The container owns the perspective; each row is folded individually. The
+     row is not simply rotated — it is wrapped onto a cylinder of radius
+     --fold-round, so the surface curves for the first part of the arc and then
+     continues along the tangent, exactly like paper rolling over an edge. */
+  .fold { perspective:var(--fold-persp); perspective-origin:50% 50%; }
+  .row { transform-origin:50% 0; will-change:transform, opacity; backface-visibility:hidden; }
+
+  .card { border:1px solid var(--line); background:var(--panel); border-radius:14px; overflow:hidden;
+          margin:0 0 22px; display:grid; grid-template-columns:minmax(0,1fr) 240px; gap:0; }
+  .card__body { padding:26px 26px 24px; display:grid; gap:8px; align-content:center; }
+  .card__body b { font-size:clamp(17px,2vw,23px); letter-spacing:-.02em; font-weight:600; }
+  .card__body span { color:var(--muted); font-size:13.5px; max-width:52ch; }
+  .card__thumb { background:linear-gradient(135deg,#2a2a33,#0f0f14); position:relative; }
+  .card__thumb::after { content:""; position:absolute; inset:14px; border:1px solid rgba(255,255,255,.14); border-radius:8px; }
+  :root[data-theme="light"] .card__thumb { background:linear-gradient(135deg,#d7d7dd,#f2f2ef); }
+
+  .readout { position:fixed; left:18px; bottom:56px; z-index:20; color:var(--muted); font-size:11px;
+             font-variant-numeric:tabular-nums; display:grid; gap:2px; }
+  .readout b { color:var(--fg); }
+  .guide { position:fixed; left:0; right:0; z-index:19; height:1px; background:var(--accent); opacity:0; pointer-events:none; }
+  .guide.show { opacity:.5; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:92px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:42px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .row { transform:none !important; opacity:1 !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cylindrical page fold</h1>
+  <span class="meta">scroll · 3d · layout — trigger: scroll; rows fold over the bottom edge</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <div class="lede">
+    <h2>Rows wrap over the bottom edge instead of sliding under it.</h2>
+    <p>Each row is mapped onto a cylinder as it approaches the fold line: it curves through the arc, then carries on along the tangent. Because the container's vanishing point follows the scroll, the fold stays directly in front of the reader wherever they are on the page.</p>
+  </div>
+
+  <div class="fold" id="fold"></div>
+</main>
+
+<div class="guide" id="guide"></div>
+<div class="readout">
+  <span>fold line at <b id="lineOut">—</b> · zone <b id="zoneOut">—</b></span>
+  <span>front row: bend <b id="bendOut">0°</b> · z <b id="zOut">0</b> · opacity <b id="opOut">1</b></span>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-angle">angle</label>
+    <input id="c-angle" type="range" min="0" max="90" step="1" value="36"><output for="c-angle">36°</output></div>
+  <div class="ctrl"><label for="c-round">radius</label>
+    <input id="c-round" type="range" min="40" max="700" step="10" value="300"><output for="c-round">300</output></div>
+  <div class="ctrl"><label for="c-zone">zone</label>
+    <input id="c-zone" type="range" min="80" max="600" step="10" value="340"><output for="c-zone">340</output></div>
+  <div class="ctrl"><label for="c-persp">perspective</label>
+    <input id="c-persp" type="range" min="300" max="2400" step="50" value="1100"><output for="c-persp">1100</output></div>
+  <div class="ctrl"><label for="c-fade">fade out</label>
+    <input id="c-fade" type="range" min="200" max="1600" step="20" value="760"><output for="c-fade">760</output></div>
+  <label class="toggle"><input type="checkbox" id="dirToggle"> fold toward me</label>
+  <label class="toggle"><input type="checkbox" id="guideToggle"> show fold line</label>
+</div>
+
+<script>
+const CONFIG = {
+  zone: 340, angle: 36, round: 300, persp: 1100, dir: 1,
+  fadeIn: 240, fadeOut: 760,
+};
+
+const ROWS = [
+  ['Wrapping, not rotating', 'The row follows the surface of a cylinder, so the top of it is still flat while the bottom has already turned.'],
+  ['Two regimes in one formula', 'Inside the arc the offsets are sine and cosine of the travelled angle; past the tangent point the row continues in a straight line at the final angle.'],
+  ['Depth drives the fade', 'Opacity comes from how far the row has receded in Z, smoothstepped between two depths, not from its distance down the page.'],
+  ['The vanishing point follows you', 'perspective-origin tracks the scroll position, so the fold is always directly ahead rather than skewing toward a fixed centre.'],
+  ['Only what changed is written', 'Each row caches its last transform string and skips the style write when the value is unchanged.'],
+  ['It switches itself off', 'An IntersectionObserver clears every transform when the section leaves the viewport, and reduced motion disables the fold entirely.'],
+  ['Measured, not guessed', 'Angle, radius, zone, perspective and direction are all custom properties, which is how the original tunes two different folds from one implementation.'],
+  ['A last row to push the others up', 'Scroll on — the fold only acts on rows inside the zone at the bottom of the screen.'],
+];
+
+const foldEl = document.getElementById('fold');
+foldEl.innerHTML = ROWS.map(([t, d]) => `
+  <div class="row">
+    <article class="card">
+      <div class="card__body"><b>${t}</b><span>${d}</span></div>
+      <div class="card__thumb"></div>
+    </article>
+  </div>`).join('');
+
+const rows = [...foldEl.querySelectorAll('.row')].map(el => ({ el, mid: 0, last: '' }));
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const RAD = Math.PI / 180;
+
+/* offsetTop chain — the row's position in the document, independent of transforms */
+function docTop(el) { let y = 0; for (let n = el; n; n = n.offsetParent) y += n.offsetTop; return y; }
+
+let containerTop = 0, lastY = -1, lastH = -1;
+function measure() {
+  containerTop = docTop(foldEl);
+  for (const r of rows) r.mid = docTop(r.el) + r.el.offsetHeight / 2;
+  lastY = -1;
+}
+
+function update() {
+  const vh = innerHeight, y = scrollY;
+  if (y === lastY && vh === lastH) return;
+  lastY = y; lastH = vh;
+
+  const zone = Math.min(CONFIG.zone, vh * 0.36);      // never let the fold eat the screen
+  const angle = CONFIG.angle * RAD;
+  const round = Math.min(CONFIG.round, angle > 0 ? zone / angle : 1e6);
+  const foldLine = vh - zone;
+  const arcLength = round * angle;                     // distance travelled before the tangent
+
+  foldEl.style.perspective = CONFIG.persp + 'px';
+  foldEl.style.perspectiveOrigin = `50% ${y + vh / 2 - containerTop}px`;
+
+  let front = null;
+
+  for (const r of rows) {
+    const past = r.mid - y - foldLine;                 // how far the row is beyond the fold line
+    let transform = '', opacity = 1, bend = 0, z = 0;
+
+    if (past > 0 && angle > 0) {
+      let dy;
+      if (past < arcLength) {
+        // still wrapping onto the cylinder
+        bend = past / round;
+        dy = round * Math.sin(bend) - past;
+        z = -round * (1 - Math.cos(bend));
+      } else {
+        // past the tangent: carry on in a straight line at the final angle
+        bend = angle;
+        const straight = past - arcLength;
+        dy = round * Math.sin(angle) + straight * Math.cos(angle) - past;
+        z = -round * (1 - Math.cos(angle)) - straight * Math.sin(angle);
+      }
+      transform = `translate3d(0, ${dy.toFixed(2)}px, ${(z * CONFIG.dir).toFixed(2)}px) rotateX(${(-CONFIG.dir * bend / RAD).toFixed(3)}deg)`;
+
+      // fade by depth, smoothstepped
+      const t = Math.min(1, Math.max(0, (-z - CONFIG.fadeIn) / Math.max(1, CONFIG.fadeOut - CONFIG.fadeIn)));
+      opacity = 1 - t * t * (3 - 2 * t);
+      if (!front || past < front.past) front = { past, bend: bend / RAD, z, opacity };
+    }
+
+    const key = transform + '|' + opacity.toFixed(3);
+    if (key !== r.last) {                              // only write when something changed
+      r.last = key;
+      r.el.style.transform = transform;
+      r.el.style.opacity = opacity === 1 ? '' : opacity.toFixed(3);
+    }
+  }
+
+  document.getElementById('lineOut').textContent = Math.round(foldLine) + 'px';
+  document.getElementById('zoneOut').textContent = Math.round(zone) + 'px';
+  document.getElementById('bendOut').textContent = front ? front.bend.toFixed(1) + '°' : '0°';
+  document.getElementById('zOut').textContent = front ? Math.round(front.z) : 0;
+  document.getElementById('opOut').textContent = front ? front.opacity.toFixed(2) : '1';
+  const guide = document.getElementById('guide');
+  guide.style.top = foldLine + 'px';
+}
+
+function clear() {
+  foldEl.style.perspectiveOrigin = '';
+  for (const r of rows) { r.el.style.transform = ''; r.el.style.opacity = ''; r.last = ''; }
+  lastY = -1;
+}
+
+let live = true;
+new IntersectionObserver(([e]) => { live = e.isIntersecting; if (!live) clear(); }, { rootMargin: '20% 0px' }).observe(foldEl);
+
+let raf = 0;
+const request = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (live && !reduced) update(); }); };
+addEventListener('scroll', request, { passive: true });
+addEventListener('resize', () => { measure(); request(); });
+
+/* controls */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); lastY = -1; request(); };
+  el.addEventListener('input', go); go();
+};
+bind('c-angle', v => CONFIG.angle = v, v => v + '°');
+bind('c-round', v => CONFIG.round = v, v => v);
+bind('c-zone', v => CONFIG.zone = v, v => v);
+bind('c-persp', v => CONFIG.persp = v, v => v);
+bind('c-fade', v => CONFIG.fadeOut = v, v => v);
+document.getElementById('dirToggle').addEventListener('change', e => { CONFIG.dir = e.target.checked ? -1 : 1; lastY = -1; request(); });
+document.getElementById('guideToggle').addEventListener('change', e => document.getElementById('guide').classList.toggle('show', e.target.checked));
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+});
+
+measure();
+update();
+window.FOLD = { CONFIG, update, measure, get rows() { return rows.map(r => r.el.style.transform); } };
+</script>
+</body>
+</html>

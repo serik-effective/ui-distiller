@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warped display type — UI Distiller</title>
+<style>
+  :root { --bg:#000; --fg:#fff; --muted:#8b8b8b; --line:#222; --accent:#a78bfa; --panel:#111; }
+  :root[data-theme="light"] { --bg:#f4f4f2; --fg:#111; --muted:#666; --line:#dcdcd6; --accent:#5b3df5; --panel:#fff; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--fg); overflow:hidden;
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:12px 18px; }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern ----------
+     The headline is drawn into a 2D canvas, uploaded as an alpha texture, and
+     mapped onto a tall thin mesh. A vertex shader then bends the mesh by
+     integrating a curvature profile down the glyph height, so the type curves
+     away rather than simply rotating: every row of pixels turns a little more
+     than the one above it. */
+  .stage { position:fixed; inset:0; display:grid; place-items:center; }
+  #gl { width:min(92vw, 1200px); height:min(60vh, 460px); display:block; }
+  .fallback { display:none; max-width:60ch; text-align:center; color:var(--muted); padding:0 24px; }
+  .fallback b { color:var(--fg); }
+
+  .caption { position:fixed; left:0; right:0; bottom:56px; text-align:center; color:var(--muted); font-size:12px; z-index:10; }
+  .caption b { color:var(--fg); font-variant-numeric:tabular-nums; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:88px; accent-color:var(--accent); }
+  .ctrl input[type="text"] { background:transparent; border:1px solid var(--line); color:var(--fg);
+                             border-radius:6px; padding:3px 8px; font:inherit; width:170px; }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:42px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Warped display type</h1>
+  <span class="meta">typography · webgl — trigger: drag the bend, or let it breathe</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<div class="stage">
+  <canvas id="gl"></canvas>
+  <p class="fallback" id="fallback">This browser did not give us a WebGL2 context, so the warp cannot run. The mechanism is described in the README: canvas text becomes an alpha texture on a tall mesh, and a vertex shader integrates a curvature profile down the glyph height.</p>
+</div>
+
+<div class="caption">bend <b id="angleOut">0°</b> · ease <b id="easeOut">1.7</b> · variation <b id="varyOut">0.09</b> · <span id="steps">24 integration steps</span></div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-text">text</label><input id="c-text" type="text" value="WARP"></div>
+  <div class="ctrl"><label for="c-angle">bend</label>
+    <input id="c-angle" type="range" min="-90" max="90" step="1" value="46"><output for="c-angle">46°</output></div>
+  <div class="ctrl"><label for="c-ease">ease</label>
+    <input id="c-ease" type="range" min="0.4" max="4" step="0.1" value="1.7"><output for="c-ease">1.7</output></div>
+  <div class="ctrl"><label for="c-vary">variation</label>
+    <input id="c-vary" type="range" min="0" max="60" step="1" value="9"><output for="c-vary">0.09</output></div>
+  <div class="ctrl"><label for="c-persp">perspective</label>
+    <input id="c-persp" type="range" min="120" max="1600" step="20" value="420"><output for="c-persp">420</output></div>
+  <label class="toggle"><input type="checkbox" id="breathe" checked> breathe</label>
+  <label class="toggle"><input type="checkbox" id="wire"> show the mesh</label>
+</div>
+
+<script>
+const CONFIG = { text: 'WARP', angle: 46, ease: 1.7, vary: 0.09, persp: 420, breathe: true, wire: false };
+const COLS = 6, ROWS = 320, STEPS = 24;     // the mesh, and the integration resolution
+
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', { alpha: true, antialias: true, premultipliedAlpha: false });
+if (!gl) {
+  canvas.style.display = 'none';
+  document.getElementById('fallback').style.display = 'block';
+} else {
+  main();
+}
+
+function main() {
+  const VERT = `#version 300 es
+  precision highp float;
+  in vec2 aUV;
+  uniform vec2 uRes;      // canvas size in px
+  uniform vec2 uCentre;   // where the type is centred
+  uniform float uTop;     // top of the ink
+  uniform float uHeight;  // ink height
+  uniform float uHalf;    // half the ink width
+  uniform float uAngle;   // total bend in radians
+  uniform float uEase;    // exponent shaping how the bend accumulates
+  uniform float uVary;    // how much the bend varies across the width
+  uniform float uPersp;
+  out vec2 vUV;
+
+  void main() {
+    vUV = aUV;
+    vec2 p = aUV * uRes;
+
+    // the bend is not constant across the line: it undulates with x, which is
+    // what stops the warp reading as a rigid cylinder
+    float A = uAngle * (1.0 + uVary * cos((p.x - uCentre.x) / max(uHalf, 1.0) * 1.9 + 0.7));
+
+    float y = p.y;
+    float z = 0.0;
+    float v = p.y - uTop;
+
+    // integrate the curve: each slice turns a little more than the one above,
+    // and the position is the running sum of cos/sin of the accumulated angle
+    if (v > 0.0 && abs(A) > 1e-4 && uHeight > 1.0) {
+      float dv = v / float(${STEPS});
+      float ay = 0.0, az = 0.0;
+      for (int i = 0; i < ${STEPS}; i++) {
+        float s = (float(i) + 0.5) * dv;
+        float t = clamp(s / uHeight, 0.0, 1.0);
+        float th = A * pow(t, uEase);
+        ay += cos(th);
+        az += sin(th);
+      }
+      y = uTop + ay * dv;
+      z = -az * dv;
+    }
+
+    float sc = uPersp / max(uPersp - z, uPersp * 0.25);
+    vec2 sp = uCentre + (vec2(p.x, y) - uCentre) * sc;
+    gl_Position = vec4(sp.x / uRes.x * 2.0 - 1.0, 1.0 - sp.y / uRes.y * 2.0, 0.0, 1.0);
+  }`;
+
+  const FRAG = `#version 300 es
+  precision highp float;
+  in vec2 vUV;
+  uniform sampler2D uTex;
+  uniform float uWire;
+  out vec4 frag;
+  void main() {
+    float a = texture(uTex, vUV).a;
+    if (uWire > 0.5) {
+      vec2 g = abs(fract(vUV * vec2(6.0, 40.0)) - 0.5);
+      float line = smoothstep(0.46, 0.5, max(g.x, g.y));
+      frag = vec4(vec3(1.0), max(a, line * 0.35));
+      return;
+    }
+    frag = vec4(vec3(a), a);
+  }`;
+
+  const compile = (type, src, label) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) { console.error(label, gl.getShaderInfoLog(sh)); return null; }
+    return sh;
+  };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT, 'vertex'));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG, 'fragment'));
+  gl.bindAttribLocation(prog, 0, 'aUV');
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+
+  /* the mesh: narrow in x, dense in y, because the bend varies down the glyph */
+  const verts = new Float32Array((COLS + 1) * (ROWS + 1) * 2);
+  let k = 0;
+  for (let r = 0; r <= ROWS; r++) for (let c = 0; c <= COLS; c++) { verts[k++] = c / COLS; verts[k++] = r / ROWS; }
+  const idx = new Uint16Array(COLS * ROWS * 6);
+  let m = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const a = r * (COLS + 1) + c, b = a + 1, d = a + COLS + 1, e = d + 1;
+    idx[m++] = a; idx[m++] = d; idx[m++] = b; idx[m++] = b; idx[m++] = d; idx[m++] = e;
+  }
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  const vbo = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const ibo = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  const U = name => gl.getUniformLocation(prog, name);
+  const text2d = document.createElement('canvas').getContext('2d', { willReadFrequently: false });
+
+  let ink = { top: 0, height: 1, half: 1, centreX: 0 };
+
+  /* draw the headline into the 2D canvas, then upload it as the texture */
+  function paintText(w, h) {
+    text2d.canvas.width = w; text2d.canvas.height = h;
+    const ctx = text2d;
+    ctx.clearRect(0, 0, w, h);
+    const size = Math.min(h * 0.62, w / Math.max(3, CONFIG.text.length) * 1.6);
+    ctx.font = `900 ${size}px ui-sans-serif, "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    const chars = [...(CONFIG.text || ' ')];
+    const track = size * 0.02;
+    const widths = chars.map(c => ctx.measureText(c).width);
+    const total = widths.reduce((a, b) => a + b, 0) + track * (chars.length - 1);
+    const mm = ctx.measureText(CONFIG.text);
+    const asc = mm.fontBoundingBoxAscent || size * 0.8;
+    const desc = mm.fontBoundingBoxDescent || size * 0.2;
+    const baseline = h / 2 - (asc + desc) / 2 + asc;
+    let x = w / 2 - total / 2;
+    for (let i = 0; i < chars.length; i++) { ctx.fillText(chars[i], x, baseline); x += widths[i] + track; }
+    const a = mm.actualBoundingBoxAscent || size * 0.72;
+    const d2 = mm.actualBoundingBoxDescent || 0;
+    ink = { top: baseline - a, height: Math.max(1, a + d2), half: total / 2, centreX: w / 2 };
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, text2d.canvas);
+  }
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+    if (!w || !h) return;
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+    paintText(w, h);
+  }
+
+  let t0 = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const t = (now - t0) / 1000;
+    const breathe = CONFIG.breathe ? Math.sin(t * 0.6) * 0.5 + 0.5 : 1;
+    const angle = CONFIG.angle * Math.PI / 180 * (CONFIG.breathe ? breathe : 1);
+
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog);
+    gl.bindVertexArray(vao);
+    gl.uniform2f(U('uRes'), canvas.width, canvas.height);
+    gl.uniform2f(U('uCentre'), ink.centreX, canvas.height / 2);
+    gl.uniform1f(U('uTop'), ink.top);
+    gl.uniform1f(U('uHeight'), ink.height);
+    gl.uniform1f(U('uHalf'), ink.half);
+    gl.uniform1f(U('uAngle'), angle);
+    gl.uniform1f(U('uEase'), CONFIG.ease);
+    gl.uniform1f(U('uVary'), CONFIG.vary);
+    gl.uniform1f(U('uPersp'), CONFIG.persp * (devicePixelRatio || 1));
+    gl.uniform1f(U('uWire'), CONFIG.wire ? 1 : 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(U('uTex'), 0);
+    gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+
+    document.getElementById('angleOut').textContent = (angle * 180 / Math.PI).toFixed(0) + '°';
+  }
+
+  addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+
+  /* controls */
+  const bind = (id, fn, fmt) => {
+    const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+    const go = () => { fn(Number(el.value)); if (out) out.textContent = fmt(Number(el.value)); };
+    el.addEventListener('input', go); go();
+  };
+  bind('c-angle', v => CONFIG.angle = v, v => v + '°');
+  bind('c-ease', v => { CONFIG.ease = v; document.getElementById('easeOut').textContent = v.toFixed(1); }, v => v.toFixed(1));
+  bind('c-vary', v => { CONFIG.vary = v / 100; document.getElementById('varyOut').textContent = (v / 100).toFixed(2); }, v => (v / 100).toFixed(2));
+  bind('c-persp', v => CONFIG.persp = v, v => v);
+  document.getElementById('c-text').addEventListener('input', e => { CONFIG.text = e.target.value.toUpperCase() || ' '; resize(); });
+  document.getElementById('breathe').addEventListener('change', e => CONFIG.breathe = e.target.checked);
+  document.getElementById('wire').addEventListener('change', e => CONFIG.wire = e.target.checked);
+
+  window.WARP = { CONFIG, resize, get ink() { return ink; }, gl };
+}
+
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus burst — UI Distiller</title>
+<style>
+  :root {
+    --cx: 50%;  --cy: 56%;      /* the optical centre, deliberately below the geometric one */
+    --ray-gap: 9deg;            /* one period of the ray pattern      */
+    --ray-width: 0.8deg;        /* lit slice inside that period       */
+    --ray-blur: 6px;
+    --ray-size: 96vmax;
+    --ray-spin: 140s;
+    --glow-size: 62vmax;
+    --ring-size: 26vmax;
+    --flash-size: 46vmax;
+    --intensity: 1;
+
+    --bg:#000; --fg:#fff; --muted:#8b8b8b; --line:#222; --accent:#7c3dff; --panel:#111;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--fg); overflow:hidden;
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:30; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:12px 18px; }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---------- the pattern ----------
+     Every layer is a gradient. The rays are one repeating-conic-gradient with a
+     radial mask so they fade out before the edge; the glows are radial gradients
+     blurred and saturated, composited with mix-blend-mode: screen so overlaps
+     add light instead of stacking alpha. Nothing here is an image or a canvas. */
+  .stage { position:fixed; inset:0; overflow:hidden; isolation:isolate; display:grid; place-items:center; }
+  .stage > .layer { position:absolute; left:var(--cx); top:var(--cy); translate:-50% -50%;
+                    aspect-ratio:1; border-radius:50%; pointer-events:none; mix-blend-mode:screen;
+                    will-change:transform, opacity; }
+
+  .rays {
+    width:var(--ray-size);
+    background:repeating-conic-gradient(from 0deg,
+      #fff0 0deg calc(var(--ray-gap) / 2 - var(--ray-width)),
+      rgba(219,232,255,.55) calc(var(--ray-gap) / 2 - var(--ray-width)) calc(var(--ray-gap) / 2),
+      #fff0 calc(var(--ray-gap) / 2) var(--ray-gap));
+    -webkit-mask-image:radial-gradient(circle, #000 6%, rgba(0,0,0,.55) 26%, transparent 58%);
+            mask-image:radial-gradient(circle, #000 6%, rgba(0,0,0,.55) 26%, transparent 58%);
+    filter:blur(var(--ray-blur));
+    opacity:calc(.9 * var(--intensity));
+    animation:spin var(--ray-spin) linear infinite;
+  }
+  @keyframes spin { to { rotate:360deg; } }
+
+  .glow  { width:var(--glow-size); filter:blur(48px) saturate(1.45) brightness(1.15); opacity:calc(.55 * var(--intensity));
+           background:radial-gradient(circle, rgba(210,252,255,.98) 0%, rgba(92,190,255,.8) 20%, rgba(124,61,255,.6) 44%, rgba(58,20,160,.3) 66%, transparent 82%); }
+  .ring  { width:var(--ring-size); filter:blur(16px) saturate(1.6) brightness(1.3); opacity:calc(.85 * var(--intensity));
+           background:radial-gradient(circle, transparent 54%, rgba(170,248,255,1) 61%, rgba(92,160,255,.85) 69%, rgba(140,70,255,.4) 78%, transparent 86%); }
+  .flash { width:var(--flash-size); filter:blur(22px) saturate(1.5) brightness(1.25); opacity:calc(.4 * var(--intensity));
+           background:radial-gradient(circle, #fff, #ddfbff 8%, #5ce1ff 20%, #4d8dff 34%, #7c3dff 52%, rgba(88,20,220,0) 74%); }
+  .wash  { position:absolute; inset:0; z-index:2; pointer-events:none; mix-blend-mode:screen; filter:blur(30px);
+           opacity:calc(.5 * var(--intensity)); border-radius:0; translate:none; left:0; top:0;
+           background:radial-gradient(circle at var(--cx) var(--cy), #fff 0%, rgba(233,241,255,.55) 26%, rgba(150,175,255,.18) 48%, transparent 68%); }
+
+  .motes { position:absolute; inset:0; z-index:3; pointer-events:none; }
+  .mote { position:absolute; border-radius:50%; background:#cfe9ff; mix-blend-mode:screen; will-change:transform, opacity; }
+
+  .title { position:relative; z-index:4; text-align:center; display:grid; gap:14px; justify-items:center; padding:0 24px; }
+  .title h2 { margin:0; font-size:clamp(46px,11vw,140px); line-height:.9; letter-spacing:-.045em; font-weight:800;
+              font-stretch:condensed; text-transform:uppercase; }
+  .title p { margin:0; color:#d8dbe4; max-width:34ch; font-size:15px; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:8px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:88px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (prefers-reduced-motion: reduce) { .rays { animation:none; } .mote { display:none; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Focus burst</h1>
+  <span class="meta">background · motion — trigger: none, it runs; tune the layers below</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Layers</button>
+</header>
+
+<div class="stage" id="stage">
+  <div class="layer glow"></div>
+  <div class="layer rays" id="rays"></div>
+  <div class="layer flash"></div>
+  <div class="layer ring"></div>
+  <div class="wash"></div>
+  <div class="motes" id="motes"></div>
+  <div class="title">
+    <h2>Listening</h2>
+    <p>Every layer here is a gradient. No canvas, no image, no particle system.</p>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-gap">ray period</label>
+    <input id="c-gap" type="range" min="3" max="24" step="0.5" value="9" data-var="--ray-gap" data-unit="deg"><output for="c-gap">9deg</output></div>
+  <div class="ctrl"><label for="c-width">ray width</label>
+    <input id="c-width" type="range" min="0.1" max="4" step="0.1" value="0.8" data-var="--ray-width" data-unit="deg"><output for="c-width">0.8deg</output></div>
+  <div class="ctrl"><label for="c-blur">ray blur</label>
+    <input id="c-blur" type="range" min="0" max="24" step="1" value="6" data-var="--ray-blur" data-unit="px"><output for="c-blur">6px</output></div>
+  <div class="ctrl"><label for="c-spin">spin</label>
+    <input id="c-spin" type="range" min="10" max="400" step="10" value="140" data-var="--ray-spin" data-unit="s"><output for="c-spin">140s</output></div>
+  <div class="ctrl"><label for="c-cy">centre y</label>
+    <input id="c-cy" type="range" min="30" max="80" step="1" value="56" data-var="--cy" data-unit="%"><output for="c-cy">56%</output></div>
+  <div class="ctrl"><label for="c-int">intensity</label>
+    <input id="c-int" type="range" min="0" max="180" step="5" value="100"><output for="c-int">1.00</output></div>
+  <label class="toggle"><input type="checkbox" id="soloRays"> rays only</label>
+  <span class="hint">screen blend: overlaps add light</span>
+</div>
+
+<script>
+const root = document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* motes: a handful of drifting specks, sized and delayed by index */
+const motes = document.getElementById('motes');
+const MOTES = 26;
+if (!reduced) {
+  motes.innerHTML = Array.from({ length: MOTES }, (_, i) => {
+    const a = (i / MOTES) * Math.PI * 2 + (i % 3) * 0.4;
+    const r = 12 + (i * 37 % 34);                       // percent of the stage
+    const size = 2 + (i * 13 % 7);
+    const x = 50 + Math.cos(a) * r, y = 56 + Math.sin(a) * r * 0.62;
+    const dur = 9 + (i * 7 % 11), delay = -(i * 1.7 % 9);
+    return `<i class="mote" style="left:${x.toFixed(2)}%; top:${y.toFixed(2)}%; width:${size}px; height:${size}px;
+             opacity:${(0.25 + (i % 5) * 0.14).toFixed(2)};
+             animation:float ${dur}s ease-in-out ${delay}s infinite alternate"></i>`;
+  }).join('');
+  const kf = document.createElement('style');
+  kf.textContent = '@keyframes float { from { transform:translate3d(0,0,0) } to { transform:translate3d(0,-18px,0) } }';
+  document.head.appendChild(kf);
+}
+
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => { const v = input.value + (input.dataset.unit || ''); root.style.setProperty(input.dataset.var, v); out.textContent = v; };
+  input.addEventListener('input', go); go();
+});
+const intensity = document.getElementById('c-int');
+const intApply = () => {
+  root.style.setProperty('--intensity', String(intensity.value / 100));
+  document.querySelector('output[for="c-int"]').textContent = (intensity.value / 100).toFixed(2);
+};
+intensity.addEventListener('input', intApply); intApply();
+
+document.getElementById('soloRays').addEventListener('change', e => {
+  for (const sel of ['.glow', '.flash', '.ring', '.wash', '.motes']) {
+    document.querySelector(sel).style.display = e.target.checked ? 'none' : '';
+  }
+});
+document.getElementById('theme').addEventListener('click', () => {
+  // cycle the blend mode so the role of `screen` is visible
+  const layers = [...document.querySelectorAll('.layer, .wash')];
+  const next = layers[0].style.mixBlendMode === 'normal' ? 'screen' : 'normal';
+  layers.forEach(l => l.style.mixBlendMode = next);
+  document.getElementById('theme').textContent = next === 'screen' ? 'Layers' : 'blend: normal';
+});
+
+window.BURST = { root };
+</script>
+</body>
+</html>

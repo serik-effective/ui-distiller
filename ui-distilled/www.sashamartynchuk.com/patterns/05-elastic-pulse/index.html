@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elastic pulse — UI Distiller</title>
+<style>
+  :root {
+    --squash: .75;      /* how much the control widens, in ems of its own font-size */
+    --squash-ratio: .33;/* vertical squash as a share of the horizontal stretch     */
+    --out-dur: 100ms;   /* into the squash                                          */
+    --back-dur: 1000ms; /* elastic return                                           */
+    --lock: 500ms;      /* re-trigger lock                                          */
+
+    --bg:#0a0a0a; --fg:#fff; --muted:#8b8b8b; --line:#242424; --accent:#a78bfa; --panel:#141414;
+  }
+  :root[data-theme="light"] { --bg:#f4f4f2; --fg:#111; --muted:#666; --line:#dcdcd6; --accent:#5b3df5; --panel:#fff; }
+
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:12px 18px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+
+  main { max-width:900px; margin:0 auto; padding:56px 24px 140px; display:grid; gap:34px; }
+  h2 { font-size:clamp(26px,4.2vw,44px); line-height:1.05; letter-spacing:-.035em; margin:0; max-width:20ch; font-weight:600; }
+  p.lede { color:var(--muted); max-width:62ch; margin:0; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+
+  /* ---------- the pattern ----------
+     The squash is expressed in the control's own type size, not in pixels or a
+     flat percentage: it widens by --squash em and loses a third of that in
+     height. A small pill and a large one therefore deform by the same amount
+     *typographically*, which is why the effect looks right at every size. */
+  .pulse { display:inline-flex; align-items:center; justify-content:center; gap:8px;
+           font:inherit; color:var(--fg); background:var(--panel); border:1px solid var(--line);
+           border-radius:999px; padding:.7em 1.3em; cursor:pointer; will-change:transform;
+           transform-origin:50% 50%; }
+  .pulse:hover { border-color:var(--fg); }
+  .pulse:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  .pulse.-solid { background:var(--fg); color:var(--bg); border-color:var(--fg); }
+  .pulse.-sm { font-size:12px; }
+  .pulse.-lg { font-size:22px; }
+  .pulse.-xl { font-size:34px; }
+  .pulse.-link { background:none; border:0; border-bottom:1px solid var(--line); border-radius:0; padding:.2em 0; }
+
+  .sizes { display:grid; gap:18px; justify-items:start; }
+  .measure { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:var(--muted);
+             border:1px solid var(--line); background:var(--panel); padding:10px 14px; display:grid; gap:3px; }
+  .measure b { color:var(--fg); font-weight:500; }
+  .note { color:var(--muted); font-size:12.5px; max-width:70ch; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:5; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:9px 18px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:96px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:46px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+  .hint { color:var(--muted); margin-left:auto; }
+
+  @media (hover: none) and (pointer: coarse) { .pulse { transform:none !important; } }
+  @media (prefers-reduced-motion: reduce) { .pulse { transform:none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Elastic pulse</h1>
+  <span class="meta">microinteraction · buttons — trigger: hover any control</span>
+  <span class="spacer"></span>
+  <button class="pulse -sm" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>The squash is measured in ems, not pixels.</h2>
+  <p class="lede">On hover the control widens by three quarters of its own font size and loses a third of that in height, then springs back on an elastic curve. Because the deformation is typographic rather than proportional, a 12px pill and a 34px one distort by the same visual amount — a percentage scale would make the big one look rubbery and the small one look inert.</p>
+
+  <div class="row">
+    <button class="pulse -solid">Primary action</button>
+    <button class="pulse">Secondary</button>
+    <a class="pulse -link" href="#">A text link</a>
+  </div>
+
+  <div class="sizes">
+    <button class="pulse -sm">Small — 12px</button>
+    <button class="pulse">Default — 15px</button>
+    <button class="pulse -lg">Large — 22px</button>
+    <button class="pulse -xl">Extra large — 34px</button>
+  </div>
+
+  <div class="measure" id="measure">hover a control to see its numbers</div>
+  <p class="note">Hover the same control repeatedly: a re-trigger lock keeps the spring from restarting while it is still settling, so a shaky pointer cannot turn the button into a vibration. Coarse pointers and reduced-motion users get no transform at all.</p>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-squash">squash</label>
+    <input id="c-squash" type="range" min="0" max="200" step="5" value="75"><output for="c-squash">0.75em</output></div>
+  <div class="ctrl"><label for="c-ratio">vertical share</label>
+    <input id="c-ratio" type="range" min="0" max="100" step="1" value="33"><output for="c-ratio">0.33</output></div>
+  <div class="ctrl"><label for="c-out">out</label>
+    <input id="c-out" type="range" min="40" max="400" step="10" value="100"><output for="c-out">100ms</output></div>
+  <div class="ctrl"><label for="c-back">return</label>
+    <input id="c-back" type="range" min="200" max="2000" step="50" value="1000"><output for="c-back">1000ms</output></div>
+  <div class="ctrl"><label for="c-amp">elasticity</label>
+    <input id="c-amp" type="range" min="0" max="100" step="5" value="30"><output for="c-amp">0.30</output></div>
+  <label class="toggle"><input type="checkbox" id="pctMode"> scale by percentage instead</label>
+  <span class="hint">compare the two modes at 12px and 34px</span>
+</div>
+
+<script>
+const CONFIG = { squash: 0.75, ratio: 0.33, out: 100, back: 1000, amp: 0.30, lock: 500, percent: false };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = matchMedia('(hover: none) and (pointer: coarse)').matches;
+const measure = document.getElementById('measure');
+
+/* elastic.out(1, p): one overshoot then a decaying oscillation */
+function elasticOut(t, amplitude = 1, period = 0.3) {
+  if (t === 0 || t === 1) return t;
+  const s = period / (2 * Math.PI) * Math.asin(1 / Math.max(1, amplitude));
+  return amplitude * Math.pow(2, -10 * t) * Math.sin((t - s) * (2 * Math.PI) / period) + 1;
+}
+const powerOut = t => 1 - Math.pow(1 - t, 2);
+
+function pulse(el) {
+  if (reduced || coarse) return;
+  if (el._locked) return;
+  el._locked = true;
+  setTimeout(() => { el._locked = false; }, CONFIG.lock);
+
+  const w = el.offsetWidth, h = el.offsetHeight;
+  const fs = parseFloat(getComputedStyle(el).fontSize);
+  // the whole idea: the deformation is a share of the type size, in absolute px
+  const c = CONFIG.squash * fs;
+  const targetX = CONFIG.percent ? 1 + CONFIG.squash * 0.12 : (w + c) / w;
+  const targetY = CONFIG.percent ? 1 - CONFIG.squash * 0.12 * CONFIG.ratio : (h - c * CONFIG.ratio) / h;
+
+  measure.innerHTML =
+    `font-size <b>${fs.toFixed(0)}px</b> · box <b>${Math.round(w)}×${Math.round(h)}</b><br>` +
+    `squash <b>${c.toFixed(1)}px</b> (${CONFIG.squash.toFixed(2)}em) → ` +
+    `scaleX <b>${targetX.toFixed(4)}</b> · scaleY <b>${targetY.toFixed(4)}</b><br>` +
+    (CONFIG.percent
+      ? 'percentage mode — the same ratio at every size, so large controls deform more in absolute terms'
+      : 'em mode — the same absolute deformation per em, so every size reads alike');
+
+  cancelAnimationFrame(el._raf);
+  const t0 = performance.now();
+  const step = now => {
+    const e = now - t0;
+    let sx, sy;
+    if (e < CONFIG.out) {
+      const t = powerOut(e / CONFIG.out);
+      sx = 1 + (targetX - 1) * t;
+      sy = 1 + (targetY - 1) * t;
+    } else {
+      const t = Math.min(1, (e - CONFIG.out) / CONFIG.back);
+      const k = elasticOut(t, 1, CONFIG.amp || 0.001);
+      sx = targetX + (1 - targetX) * k;
+      sy = targetY + (1 - targetY) * k;
+      if (t >= 1) { el.style.transform = ''; return; }
+    }
+    el.style.transform = `scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`;
+    el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+
+function attach(root = document) {
+  for (const el of root.querySelectorAll('.pulse')) {
+    if (el._pulseBound) continue;
+    el._pulseBound = true;
+    el.addEventListener('mouseenter', () => pulse(el));
+  }
+}
+attach();
+// controls added later are picked up too, exactly as the original does
+new MutationObserver(() => attach()).observe(document.body, { childList: true, subtree: true });
+
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); };
+  el.addEventListener('input', go); go();
+};
+bind('c-squash', v => CONFIG.squash = v / 100, v => (v / 100).toFixed(2) + 'em');
+bind('c-ratio', v => CONFIG.ratio = v / 100, v => (v / 100).toFixed(2));
+bind('c-out', v => CONFIG.out = v, v => v + 'ms');
+bind('c-back', v => CONFIG.back = v, v => v + 'ms');
+bind('c-amp', v => CONFIG.amp = v / 100, v => (v / 100).toFixed(2));
+document.getElementById('pctMode').addEventListener('change', e => CONFIG.percent = e.target.checked);
+document.getElementById('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+});
+
+window.PULSE = { CONFIG, pulse, elasticOut };
+</script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPU tier probe — UI Distiller</title>
+<style>
+  :root { --bg:#0a0a0a; --fg:#fff; --muted:#8b8b8b; --line:#242424; --accent:#a78bfa; --panel:#141414;
+          --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; }
+  :root[data-theme="light"] { --bg:#f4f4f2; --fg:#111; --muted:#666; --line:#dcdcd6; --accent:#5b3df5; --panel:#fff;
+          --ok:#15803d; --warn:#b45309; --bad:#b91c1c; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding:12px 18px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:13px; font-weight:600; margin:0; letter-spacing:-.01em; }
+  header .meta { color:var(--muted); font-size:11px; }
+  header .spacer { flex:1; }
+  .btn { font:inherit; font-size:11px; color:var(--fg); background:transparent; border:1px solid var(--line);
+         border-radius:999px; padding:4px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  main { max-width:940px; margin:0 auto; padding:48px 24px 90px; display:grid; gap:26px; }
+  h2 { font-size:clamp(25px,4vw,42px); line-height:1.06; letter-spacing:-.035em; margin:0; max-width:22ch; font-weight:600; }
+  p.lede { color:var(--muted); max-width:64ch; margin:0; }
+
+  .verdict { border:1px solid var(--line); background:var(--panel); border-radius:14px; padding:22px 24px; display:grid; gap:14px; }
+  .verdict__top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .tier { font-size:clamp(22px,3.4vw,34px); letter-spacing:-.03em; font-weight:700; }
+  .pill { font-size:11px; letter-spacing:.1em; text-transform:uppercase; border:1px solid currentColor;
+          border-radius:999px; padding:3px 9px; }
+  .pill.-ok { color:var(--ok); } .pill.-warn { color:var(--warn); } .pill.-bad { color:var(--bad); }
+
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  td { padding:7px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  td:first-child { color:var(--muted); width:210px; }
+  td b { font-weight:500; }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+         background:color-mix(in srgb, var(--fg) 8%, transparent); padding:1px 5px; border-radius:4px; }
+
+  .steps { display:grid; gap:9px; }
+  .step { display:grid; grid-template-columns:20px 1fr; gap:10px; align-items:start; font-size:13.5px; }
+  .step i { width:9px; height:9px; border-radius:50%; background:var(--line); margin-top:6px; display:block; }
+  .step[data-state="pass"] i { background:var(--ok); }
+  .step[data-state="fail"] i { background:var(--bad); }
+  .step[data-state="skip"] i { background:var(--warn); }
+  .step span { color:var(--muted); }
+  .step b { color:var(--fg); font-weight:500; }
+
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .note { color:var(--muted); font-size:12.5px; max-width:72ch; }
+  .demoBox { height:120px; border:1px solid var(--line); border-radius:12px; overflow:hidden; position:relative; background:#000; }
+  .demoBox canvas { width:100%; height:100%; display:block; }
+
+  @media (prefers-reduced-motion: reduce) { .demoBox { --static:1; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>GPU tier probe</h1>
+  <span class="meta">loading · responsive — trigger: page load; re-run with the button</span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme">Theme</button>
+</header>
+
+<main>
+  <h2>Decide what to render before rendering it.</h2>
+  <p class="lede">Asking <code>navigator.hardwareConcurrency</code> is not enough: a machine can report eight cores and still be rasterising WebGL in software, where a heavy scene collapses to single figures. This probe opens a context that <em>refuses</em> to be created under a major performance caveat, reads the unmasked renderer string, matches it against the known software rasterisers, and only then picks a tier — all inside a worker so the main thread never blocks on it.</p>
+
+  <div class="verdict">
+    <div class="verdict__top">
+      <span class="tier" id="tier">probing…</span>
+      <span class="pill" id="pill">running</span>
+    </div>
+    <table>
+      <tr><td>Renderer</td><td><b id="renderer">—</b></td></tr>
+      <tr><td>Software rasteriser</td><td><b id="soft">—</b></td></tr>
+      <tr><td>Probe path</td><td><b id="path">—</b></td></tr>
+      <tr><td>hardwareConcurrency</td><td><b id="cores">—</b></td></tr>
+      <tr><td>deviceMemory</td><td><b id="mem">—</b></td></tr>
+      <tr><td>Pointer / viewport</td><td><b id="ptr">—</b></td></tr>
+      <tr><td>Decision</td><td><b id="why">—</b></td></tr>
+    </table>
+  </div>
+
+  <div class="steps" id="steps">
+    <div class="step" data-state="" id="s1"><i></i><div><b>Worker with OffscreenCanvas</b> <span>— probe off the main thread, 5s timeout</span></div></div>
+    <div class="step" data-state="" id="s2"><i></i><div><b>Context with failIfMajorPerformanceCaveat</b> <span>— refuse a context the browser would only grant in software</span></div></div>
+    <div class="step" data-state="" id="s3"><i></i><div><b>WEBGL_debug_renderer_info</b> <span>— read the unmasked renderer string</span></div></div>
+    <div class="step" data-state="" id="s4"><i></i><div><b>Match the software rasterisers</b> <span>— swiftshader · llvmpipe · softpipe · software · basic render</span></div></div>
+    <div class="step" data-state="" id="s5"><i></i><div><b>Release the context</b> <span>— WEBGL_lose_context, so the probe costs nothing afterwards</span></div></div>
+  </div>
+
+  <div class="row">
+    <button class="btn" id="rerun">Re-run the probe</button>
+    <button class="btn" id="forceSoft">Pretend it is software</button>
+    <button class="btn" id="forceLight">Force the light tier</button>
+  </div>
+
+  <p class="note">The original exposes the same overrides through the query string — <code>?nogl</code>, <code>?lightgrid</code>, <code>?heavygrid</code> — which is what makes a decision like this debuggable in the field instead of only on the developer's machine. The box below renders at whatever tier was chosen.</p>
+
+  <div class="demoBox"><canvas id="tierCanvas"></canvas></div>
+</main>
+
+<script>
+const SOFTWARE = /swiftshader|llvmpipe|softpipe|software|basic render/i;
+const FAST = /apple\s*(m\d|a\d{2}|gpu)|nvidia|geforce|rtx|gtx|quadro|radeon\s*(rx|pro|r9|hd\s*[5-9])|intel.*arc/i;
+const SLOW = /intel.*(hd graphics|uhd|iris|\bgraphics\b)|radeon.*(vega|\bgraphics\b)|microsoft basic|gdi generic/i;
+const CORE_THRESHOLD = 8;
+
+const el = id => document.getElementById(id);
+const setStep = (id, state) => el(id).dataset.state = state;
+
+/* the probe body, shipped into a worker as a string */
+const WORKER_SRC = `
+  let r = 'NO-GL';
+  try {
+    const c = new OffscreenCanvas(1, 1);
+    const a = { failIfMajorPerformanceCaveat: true };
+    const gl = c.getContext('webgl2', a) || c.getContext('webgl', a);
+    if (gl) {
+      const d = gl.getExtension('WEBGL_debug_renderer_info');
+      r = String(d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      const l = gl.getExtension('WEBGL_lose_context'); if (l) l.loseContext();
+    } else { r = 'CAVEAT'; }
+  } catch (e) { r = 'NO-GL'; }
+  postMessage(r);
+`;
+
+/* the same probe on the main thread, for browsers without OffscreenCanvas */
+function probeSync() {
+  try {
+    const c = document.createElement('canvas');
+    const a = { failIfMajorPerformanceCaveat: true };
+    const gl = c.getContext('webgl2', a) || c.getContext('webgl', a);
+    if (!gl) return { renderer: '(refused: software-only or absent)', software: true };
+    const d = gl.getExtension('WEBGL_debug_renderer_info');
+    const r = String(d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return { renderer: r, software: SOFTWARE.test(r) };
+  } catch { return { renderer: '(threw)', software: true }; }
+}
+
+function probe() {
+  return new Promise(resolve => {
+    if (typeof OffscreenCanvas === 'undefined' || typeof Worker === 'undefined') {
+      setStep('s1', 'skip');
+      resolve({ ...probeSync(), path: 'main thread (no OffscreenCanvas/Worker)' });
+      return;
+    }
+    let done = false, worker;
+    const finish = res => { if (done) return; done = true; worker?.terminate(); resolve(res); };
+    try {
+      worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })));
+      worker.onmessage = e => {
+        setStep('s1', 'pass');
+        const r = String(e.data);
+        if (r === 'NO-GL' || r === 'CAVEAT') {
+          setStep('s2', 'fail');
+          finish({ ...probeSync(), path: 'worker said ' + r + ', re-probed on the main thread' });
+          return;
+        }
+        setStep('s2', 'pass'); setStep('s3', 'pass'); setStep('s5', 'pass');
+        finish({ renderer: r, software: SOFTWARE.test(r), path: 'worker + OffscreenCanvas' });
+      };
+      worker.onerror = () => { setStep('s1', 'fail'); finish({ ...probeSync(), path: 'worker failed, main thread' }); };
+      setTimeout(() => { if (!done) { setStep('s1', 'skip'); finish({ ...probeSync(), path: 'worker timed out after 5s' }); } }, 5000);
+    } catch { setStep('s1', 'fail'); finish({ ...probeSync(), path: 'worker threw, main thread' }); }
+  });
+}
+
+function decide(result, override) {
+  const cores = navigator.hardwareConcurrency || 8;
+  const mem = navigator.deviceMemory;
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const narrow = matchMedia('(max-width: 64rem)').matches;
+  const r = result.renderer;
+
+  let tier, why;
+  if (override === 'light') { tier = 'light'; why = 'forced by the light override'; }
+  else if (result.software) { tier = 'light'; why = 'software rasteriser — heavy scenes would crawl'; }
+  else if (coarse || narrow) { tier = 'light'; why = 'coarse pointer or narrow viewport'; }
+  else if (FAST.test(r)) { tier = 'heavy'; why = 'renderer matches the known-fast set'; }
+  else if (SLOW.test(r)) { tier = 'light'; why = 'renderer matches the known-slow set'; }
+  else if (mem && mem <= 4) { tier = 'light'; why = 'deviceMemory ≤ 4 GB'; }
+  else if (cores > CORE_THRESHOLD) { tier = 'heavy'; why = `unrecognised renderer, ${cores} cores > ${CORE_THRESHOLD}`; }
+  else { tier = 'light'; why = `unrecognised renderer, only ${cores} cores`; }
+
+  setStep('s4', result.software ? 'fail' : 'pass');
+  el('tier').textContent = tier === 'heavy' ? 'heavy tier' : 'light tier';
+  el('pill').textContent = tier === 'heavy' ? 'full effects' : 'reduced effects';
+  el('pill').className = 'pill ' + (tier === 'heavy' ? '-ok' : '-warn');
+  el('renderer').textContent = r;
+  el('soft').textContent = result.software ? 'yes' : 'no';
+  el('path').textContent = result.path;
+  el('cores').textContent = String(cores);
+  el('mem').textContent = mem ? mem + ' GB' : 'not reported';
+  el('ptr').textContent = (coarse ? 'coarse' : 'fine') + ' · ' + (narrow ? 'narrow' : 'wide');
+  el('why').textContent = why;
+  render(tier);
+  window.TIER = { tier, why, result, cores, mem };
+}
+
+/* something to actually render at the chosen tier */
+let raf = 0;
+function render(tier) {
+  const canvas = el('tierCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const resize = () => { canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; };
+  resize();
+  const count = tier === 'heavy' ? 220 : 26;
+  const dots = Array.from({ length: count }, (_, i) => ({
+    x: Math.random(), y: Math.random(), r: (tier === 'heavy' ? 1 : 2) + Math.random() * 2, s: 0.2 + Math.random() * 0.6,
+  }));
+  cancelAnimationFrame(raf);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (function loop() {
+    if (!still) raf = requestAnimationFrame(loop);   // draw one static frame instead
+    const { width: w, height: h } = canvas;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#cfe9ff';
+    for (const d of dots) {
+      if (!still) d.x += d.s * 0.0012;
+      if (d.x > 1) d.x = 0;
+      ctx.globalAlpha = tier === 'heavy' ? 0.75 : 0.5;
+      ctx.beginPath();
+      ctx.arc(d.x * w, d.y * h, d.r * dpr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#8b8b8b';
+    ctx.font = `${12 * dpr}px ui-monospace, monospace`;
+    ctx.fillText(`${count} particles · ${tier} tier`, 12 * dpr, 20 * dpr);
+  })();
+  addEventListener('resize', resize, { once: true });
+}
+
+async function run(override) {
+  ['s1', 's2', 's3', 's4', 's5'].forEach(id => setStep(id, ''));
+  el('tier').textContent = 'probing…';
+  el('pill').textContent = 'running';
+  el('pill').className = 'pill';
+  if (override === 'soft') {
+    setStep('s1', 'skip'); setStep('s2', 'fail'); setStep('s4', 'fail');
+    decide({ renderer: 'SwiftShader (forced by the override)', software: true, path: 'override' }, null);
+    return;
+  }
+  decide(await probe(), override);
+}
+
+el('rerun').addEventListener('click', () => run());
+el('forceSoft').addEventListener('click', () => run('soft'));
+el('forceLight').addEventListener('click', () => run('light'));
+el('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+});
+
+run();
+window.PROBE = { run, probe, decide, SOFTWARE, FAST, SLOW };
+</script>
+</body>
+</html>
