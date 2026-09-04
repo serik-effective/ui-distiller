@@ -4,13 +4,63 @@
   "analyzedAt": "2026-09-04",
   "stats": {
     "pages": 4,
-    "candidates": 6,
-    "distilled": 4
+    "candidates": 8,
+    "distilled": 6
   },
   "patterns": [
     {
-      "slug": "01-grid-quantised-frame",
+      "slug": "01-scroll-camera-sequence",
       "number": "01",
+      "name": "Scroll-scrubbed camera sequence",
+      "categories": [
+        "scroll",
+        "3d",
+        "webgl",
+        "motion"
+      ],
+      "description": "One baked camera animation, cut at its own keyframes into segments — and each page section scrubs exactly one of them, so the flight through the scene never restarts.",
+      "trigger": "scroll",
+      "difficulty": "Hard",
+      "fidelity": "approximate",
+      "score": 4.8,
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 5
+      },
+      "source": "https://illoca.unseen.co/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "02-blueprint-cel-shading",
+      "number": "02",
+      "name": "Blueprint cel shading",
+      "categories": [
+        "webgl",
+        "3d",
+        "image-effect",
+        "cursor"
+      ],
+      "description": "Two-step diffuse, a voronoi spray mask that breaks the shadow edge into stipple, height-ramped grain, and a pointer window that turns the surface into its blueprint.",
+      "trigger": "ambient, pointer-move",
+      "difficulty": "Hard",
+      "fidelity": "high",
+      "score": 4.5,
+      "scores": {
+        "visual": 5,
+        "originality": 4,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 5
+      },
+      "source": "https://illoca.unseen.co/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-grid-quantised-frame",
+      "number": "03",
       "name": "Grid-quantised clip-path frame",
       "categories": [
         "layout",
@@ -33,8 +83,8 @@
       "needsNetwork": false
     },
     {
-      "slug": "02-blueprint-loader",
-      "number": "02",
+      "slug": "04-blueprint-loader",
+      "number": "04",
       "name": "Blueprint loader",
       "categories": [
         "loading",
@@ -57,8 +107,8 @@
       "needsNetwork": false
     },
     {
-      "slug": "03-hand-annotations",
-      "number": "03",
+      "slug": "05-hand-annotations",
+      "number": "05",
       "name": "Hand-annotation callouts",
       "categories": [
         "typography",
@@ -81,8 +131,8 @@
       "needsNetwork": false
     },
     {
-      "slug": "04-coordinate-readout",
-      "number": "04",
+      "slug": "06-coordinate-readout",
+      "number": "06",
       "name": "Blueprint coordinate readout",
       "categories": [
         "microinteraction",

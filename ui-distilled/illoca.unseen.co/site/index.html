@@ -33,7 +33,12 @@
   img { display:block; max-width:100%; }
   a { color:inherit; text-decoration:none; }
 
-  /* ── 01 · the frame: four fixed graph-paper panels, each clipped from one side ── */
+  /* ── 01/02 · the WebGL scene sits under everything ── */
+  #scene { position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; }
+  .scrim { position:fixed; inset:0; z-index:1; pointer-events:none; background:var(--grid-bg); opacity:0;
+           transition:opacity 200ms linear; }
+
+  /* ── 03 · the frame: four fixed graph-paper panels, each clipped from one side ── */
   .panel { position:fixed; top:0; left:0; width:100%; height:100dvh; z-index:30; pointer-events:none;
            background-color:var(--grid-bg);
            background-image:linear-gradient(90deg, var(--grid-v) 1px, transparent 0),
@@ -106,7 +111,7 @@
 
   /* ── page ── */
   main { position:relative; z-index:10; }
-  .hero { min-height:100vh; display:grid; align-content:center;
+  .hero { min-height:130vh; display:grid; align-content:center;
           /* the opening starts 28 cells down, so the hero clears it */
           padding:calc(var(--cell) * 34) calc(var(--cell) * 14) calc(var(--cell) * 6); }
   .headline { position:relative; display:block; width:max-content; max-width:100%; }
@@ -133,12 +138,21 @@
 
   /* sections */
   section { padding:calc(var(--cell) * 8) calc(var(--cell) * 6); }
+  /* the tracked stages get room, so the camera flight is not over by a third
+     of the page */
+  #work, #system { min-height:120vh; display:grid; align-content:center; }
+  /* text sits on a sheet of its own so it stays legible over the scene */
+  .pane { background:color-mix(in srgb, var(--grid-bg) 86%, transparent); backdrop-filter:blur(2px);
+          padding:20px 22px; border-radius:2px; max-width:62ch; }
   .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); }
   h2 { font-size:clamp(26px,3.4vw,44px); letter-spacing:-.03em; line-height:1.05; margin:10px 0 0; font-weight:500; max-width:18ch; }
   .lede { color:var(--body); max-width:56ch; margin:18px 0 0; }
   .plate { margin:calc(var(--cell) * 4) 0 0; background:var(--accent); color:#fff; padding:0; overflow:hidden;
            border-radius:2px; position:relative; }
   .plate img { width:100%; height:min(58vh,520px); object-fit:cover; mix-blend-mode:luminosity; opacity:.9; }
+  /* small, so the scene behind the page stays the thing you look at */
+  .plate--small { max-width:420px; }
+  .plate--small img { height:220px; }
   .plate figcaption { position:absolute; left:0; right:0; bottom:0; padding:14px 18px; font-size:13px;
                       background:linear-gradient(transparent, rgba(0,0,0,.45)); }
   .grid { display:grid; gap:calc(var(--cell) * 2); grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
@@ -166,7 +180,11 @@
 </head>
 <body>
 
-<!-- 01 · the frame -->
+<!-- 01 · the scroll-scrubbed camera sequence, cel-shaded (patterns 01 + 02) -->
+<canvas id="scene"></canvas>
+<div class="scrim" id="scrim"></div>
+
+<!-- 03 · the frame -->
 <div class="panel panel--left"></div>
 <div class="panel panel--right"></div>
 <div class="panel panel--top"></div>
@@ -213,30 +231,34 @@
       <div class="note note--a" data-text="architectural" data-start="left" data-rule="left"></div>
       <div class="note note--b" data-text="not software" data-start="right" data-rule="right"></div>
     </div>
-    <p class="sub" id="heroSub">A technical copy composing four distilled patterns: a grid-quantised frame, a blueprint loader, hand-drawn callouts and a coordinate readout.</p>
+    <p class="sub" id="heroSub">A technical copy composing six distilled patterns: a scroll-scrubbed camera flight through a cel-shaded scene, a grid-quantised frame, a blueprint loader, hand-drawn callouts and a coordinate readout.</p>
   </section>
 
   <section id="work">
-    <span class="kicker">01 — Sheets</span>
-    <h2 id="workTitle">Everything is placed against the ruling.</h2>
-    <p class="lede" id="workLede">Scroll and the frame scrubs between two named states, exactly as the source does — the opening is never a fixed size, and never off the grid.</p>
-    <figure class="plate" data-tone="dark">
-      <img id="plate" src="https://picsum.photos/seed/drafting-plate/1600/900" alt="">
+    <div class="pane">
+      <span class="kicker">01 — Sheets</span>
+      <h2 id="workTitle">Everything is placed against the ruling.</h2>
+      <p class="lede" id="workLede">Scroll and the frame scrubs between two named states, exactly as the source does — the opening is never a fixed size, and never off the grid.</p>
+    </div>
+    <figure class="plate plate--small" data-tone="dark">
+      <img id="plate" src="https://picsum.photos/seed/drafting-plate/1200/700" alt="">
       <figcaption id="plateCap">Placeholder image · picsum.photos</figcaption>
     </figure>
   </section>
 
   <section id="system">
     <span class="kicker">02 — System</span>
-    <h2>Four patterns, one sheet.</h2>
+    <h2>Six patterns, one sheet.</h2>
     <p class="lede">Each card is a design-system note from an anonymised pack; the palette below it is that pack's own.</p>
     <div class="grid" id="cards"></div>
   </section>
 
   <section id="notes">
+    <div class="pane">
     <span class="kicker">03 — Notes</span>
-    <h2 id="notesTitle">The frame, the loader, the callouts, the readout.</h2>
-    <p class="lede" id="notesLede">The loader hands the page to the frame part-way through its own exit, the callouts are written onto the sheet rather than into the sentence, and the readout recolours itself against whatever passes behind it.</p>
+    <h2 id="notesTitle">The camera, the shader, the frame, the loader, the callouts, the readout.</h2>
+    <p class="lede" id="notesLede">Scroll drives one camera track cut at its own keyframes — each section above scrubbed one segment of it. The surfaces are shaded in two steps with a voronoi mask breaking the shadow edge. The loader hands the page to the frame part-way through its own exit, the callouts are written onto the sheet rather than into the sentence, and the readout recolours itself against whatever passes behind it.</p>
+    </div>
   </section>
 </main>
 
@@ -245,7 +267,7 @@
   <span id="credit">placeholder copy</span>
 </footer>
 
-<div class="notice">technical copy · patterns <b>01–04</b> from the illoca.unseen.co distillation · no branding, copy or imagery from the source</div>
+<div class="notice">technical copy · patterns <b>01–06</b> from the illoca.unseen.co distillation · no branding, copy or imagery from the source</div>
 
 <script>
 /* ═══ 01 · frame ═══════════════════════════════════════════════════════
@@ -278,6 +300,7 @@ function applyState(name) { document.body.classList.remove('is-scrubbing'); writ
 let frameRaf = 0;
 function scrubFrame() {
   frameRaf = 0;
+  drawScene();
   const span = Math.max(1, innerHeight * 0.9);
   const p = Math.min(1, Math.max(0, scrollY / span));
   const a = insetsFor('open'), b = insetsFor('openToNav');
@@ -399,13 +422,230 @@ fetch('content.json').then(r => (r.ok ? r.json() : null)).then(pack => {
     'copy adapted from anonymised design-md packs (MIT) — source entries: ' + names;
 }).catch(() => {});
 
+/* ══ 01 + 02 · the scene ═══════════════════════════════════════════════
+   One camera track, cut at its keyframes; each section of this page scrubs
+   one segment, exactly as the source wires ScrollTrigger to a Theatre
+   playhead. The material is the site's two-step diffuse with a voronoi
+   spray mask on the terminator and grain ramped by height. */
+const TRACK = [
+  { t: 0.00, pos: [ 5.2, 3.4, 7.2], look: [0.0, 0.55, 0.0] },
+  { t: 0.34, pos: [ 2.0, 2.0, 4.4], look: [0.1, 0.50, 0.2] },
+  { t: 0.68, pos: [ 0.2, 3.2, 2.0], look: [0.0, 0.35, 0.1] },
+  { t: 1.00, pos: [ 0.0, 5.4, 0.9], look: [0.0, 0.30, 0.0] },
+];
+const SEGMENTS = TRACK.length - 1;
+
+const sub3 = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+const norm3 = v => { const l = Math.hypot(v[0],v[1],v[2]) || 1; return [v[0]/l, v[1]/l, v[2]/l]; };
+const cross3 = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const dot3 = (a, b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const persp = (f0, aspect, n, f) => { const t = 1/Math.tan((f0*Math.PI/180)/2), nf = 1/(n-f);
+  return [t/aspect,0,0,0, 0,t,0,0, 0,0,(f+n)*nf,-1, 0,0,2*f*n*nf,0]; };
+const view3 = (eye, c, up) => { const z = norm3(sub3(eye,c)), x = norm3(cross3(up,z)), y = cross3(z,x);
+  return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot3(x,eye),-dot3(y,eye),-dot3(z,eye),1]; };
+const catmull3 = (p0,p1,p2,p3,t) => { const t2=t*t,t3=t2*t; return [0,1,2].map(i => 0.5*(
+  2*p1[i] + (-p0[i]+p2[i])*t + (2*p0[i]-5*p1[i]+4*p2[i]-p3[i])*t2 + (-p0[i]+3*p1[i]-3*p2[i]+p3[i])*t3)); };
+
+function sampleTrack(pos) {
+  let i = 0;
+  while (i < SEGMENTS - 1 && pos > TRACK[i + 1].t) i++;
+  const a = TRACK[i], b = TRACK[i + 1];
+  const t = Math.min(1, Math.max(0, (pos - a.t) / (b.t - a.t || 1)));
+  return {
+    eye: catmull3(TRACK[Math.max(0, i - 1)].pos, a.pos, b.pos, TRACK[Math.min(TRACK.length - 1, i + 2)].pos, t),
+    look: [0,1,2].map(k => a.look[k] + (b.look[k] - a.look[k]) * t),
+    index: i, local: t,
+  };
+}
+
+const sceneCanvas = document.getElementById('scene');
+const sgl = sceneCanvas.getContext('webgl2', { antialias: true });
+const scrim = document.getElementById('scrim');
+let sceneReady = false, sProg, sVao, sEdgeVao, sTri, sEdge, sUni = {};
+
+const S_VERT = `#version 300 es
+in vec3 aPos; in vec3 aNormal; in vec2 aUv;
+uniform mat4 uProj, uView;
+out vec3 vNormal; out vec3 vWorld; out vec2 vUv;
+void main() { vNormal = aNormal; vWorld = aPos; vUv = aUv; gl_Position = uProj * uView * vec4(aPos, 1.0); }`;
+
+const S_FRAG = `#version 300 es
+precision highp float;
+in vec3 vNormal; in vec3 vWorld; in vec2 vUv;
+uniform vec3 uBase, uShadow, uLight;
+uniform float uThreshold, uSmooth, uGrain, uSprayScale;
+uniform vec2 uSprayRamp;
+out vec4 outColor;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+vec2 hash2(vec2 p) { return fract(sin(vec2(dot(p, vec2(127.1,311.7)), dot(p, vec2(269.5,183.3)))) * 43758.5453); }
+float voronoi(vec2 p) {
+  vec2 n = floor(p), f = fract(p); float best = 8.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 g = vec2(float(i), float(j)); vec2 o = hash2(n + g);
+    best = min(best, length(g + o - f));
+  }
+  return best;
+}
+void main() {
+  float d = max(dot(normalize(vNormal), normalize(uLight)), 0.0);
+  d = smoothstep(uThreshold, uThreshold + uSmooth, d);
+  vec3 color = mix(uShadow, uBase, d);
+  float spray = smoothstep(uSprayRamp.x, uSprayRamp.y, voronoi((vUv - 0.5) * uSprayScale * 0.8 + 0.5));
+  float terminator = 1.0 - smoothstep(0.0, 0.35, abs(d - 0.5) * 2.0);
+  color = mix(color, uShadow, spray * terminator * 0.8);
+  float n = hash(floor(gl_FragCoord.xy * 0.8));
+  float ramp = smoothstep(-1.0, 3.0, vWorld.y);
+  color = mix(color, color * (0.86 + n * 0.28), uGrain * (0.45 + 0.55 * ramp));
+  outColor = vec4(color, 1.0);
+}`;
+
+function sBox(cx, cy, cz, sx, sy, sz, out) {
+  const h = [sx/2, sy/2, sz/2];
+  const faces = [
+    { n:[0,0,1],  v:[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]] },
+    { n:[0,0,-1], v:[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]] },
+    { n:[1,0,0],  v:[[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]] },
+    { n:[-1,0,0], v:[[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]] },
+    { n:[0,1,0],  v:[[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]] },
+    { n:[0,-1,0], v:[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]] },
+  ];
+  const uvs = [[0,0],[1,0],[1,1],[0,1]];
+  for (const f of faces) {
+    const q = f.v.map(v => [cx + v[0]*h[0], cy + v[1]*h[1], cz + v[2]*h[2]]);
+    for (const i of [0,1,2, 0,2,3]) { out.pos.push(...q[i]); out.nrm.push(...f.n); out.uv.push(...uvs[i]); }
+    for (const [a,b] of [[0,1],[1,2],[2,3],[3,0]]) { out.edge.push(...q[a], ...q[b]); out.edgeUv.push(0,0, 0,0); }
+  }
+}
+
+function initScene() {
+  if (!sgl) return false;
+  const mkShader = (type, src) => {
+    const sh = sgl.createShader(type); sgl.shaderSource(sh, src); sgl.compileShader(sh);
+    if (!sgl.getShaderParameter(sh, sgl.COMPILE_STATUS)) throw new Error(sgl.getShaderInfoLog(sh));
+    return sh;
+  };
+  sProg = sgl.createProgram();
+  sgl.attachShader(sProg, mkShader(sgl.VERTEX_SHADER, S_VERT));
+  sgl.attachShader(sProg, mkShader(sgl.FRAGMENT_SHADER, S_FRAG));
+  sgl.linkProgram(sProg);
+  if (!sgl.getProgramParameter(sProg, sgl.LINK_STATUS)) throw new Error(sgl.getProgramInfoLog(sProg));
+
+  const out = { pos: [], nrm: [], uv: [], edge: [], edgeUv: [] };
+  sBox(0, -0.05, 0, 8, 0.1, 6, out);
+  sBox(0, 0.02, 0.2, 3.6, 0.02, 2.8, out);
+  let seed = 11;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let gx = -3; gx <= 3; gx++) for (let gz = -2; gz <= 2; gz++) {
+    const dd = Math.hypot(gx/3, gz/2);
+    if (dd > 1.05 || rnd() < 0.2) continue;
+    const hh = 0.18 + (1 - dd) * (0.5 + rnd() * 0.8);
+    sBox(gx * 0.42, 0.03 + hh/2, gz * 0.42 + 0.2, 0.36, hh, 0.36, out);
+  }
+  sTri = out.pos.length / 3; sEdge = out.edge.length / 3;
+  const aPos = sgl.getAttribLocation(sProg, 'aPos'),
+        aNrm = sgl.getAttribLocation(sProg, 'aNormal'),
+        aUv  = sgl.getAttribLocation(sProg, 'aUv');
+  const mk = (data, loc, size) => {
+    const b = sgl.createBuffer(); sgl.bindBuffer(sgl.ARRAY_BUFFER, b);
+    sgl.bufferData(sgl.ARRAY_BUFFER, new Float32Array(data), sgl.STATIC_DRAW);
+    sgl.enableVertexAttribArray(loc); sgl.vertexAttribPointer(loc, size, sgl.FLOAT, false, 0, 0);
+  };
+  sVao = sgl.createVertexArray(); sgl.bindVertexArray(sVao);
+  mk(out.pos, aPos, 3); mk(out.nrm, aNrm, 3); mk(out.uv, aUv, 2);
+  sEdgeVao = sgl.createVertexArray(); sgl.bindVertexArray(sEdgeVao);
+  mk(out.edge, aPos, 3); mk(new Array(sEdge*3).fill(0), aNrm, 3); mk(out.edgeUv, aUv, 2);
+  sgl.bindVertexArray(null);
+  for (const n of ['uProj','uView','uBase','uShadow','uLight','uThreshold','uSmooth','uGrain','uSprayScale','uSprayRamp'])
+    sUni[n] = sgl.getUniformLocation(sProg, n);
+  sgl.enable(sgl.DEPTH_TEST);
+  sgl.enable(sgl.POLYGON_OFFSET_FILL);
+  sgl.polygonOffset(1, 1);
+  sceneReady = true;
+  return true;
+}
+
+/* the page's own sections drive the segments */
+/* the hero is the first stage: a stage that begins above the fold would
+   otherwise be fully "past" at scroll 0, because ScrollTrigger's
+   top bottom → bottom bottom window starts one viewport above it */
+const trackSections = [document.querySelector('.hero'), ...document.querySelectorAll('main > section')]
+  .filter(Boolean).slice(0, SEGMENTS);
+function trackPlayhead() {
+  let last = 0;
+  for (let i = 0; i < SEGMENTS; i++) {
+    const el = trackSections[i];
+    if (!el) break;
+    const r = el.getBoundingClientRect();
+    const start = Math.max(0, r.top + scrollY - innerHeight);
+    const end = r.bottom + scrollY - innerHeight;
+    const p = Math.min(1, Math.max(0, (scrollY - start) / (end - start || 1)));
+    const a = TRACK[i].t, b = TRACK[i + 1].t;
+    if (p > 0) last = a + (b - a) * p;
+    if (p < 1) break;
+  }
+  return last;
+}
+
+const scenePointer = { x: 0, y: 0, ex: 0, ey: 0 };
+addEventListener('pointermove', e => {
+  scenePointer.x = (e.clientX / innerWidth) * 2 - 1;
+  scenePointer.y = (e.clientY / innerHeight) * 2 - 1;
+}, { passive: true });
+
+function drawScene() {
+  if (!sceneReady) return;
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr);
+  if (sceneCanvas.width !== w || sceneCanvas.height !== h) { sceneCanvas.width = w; sceneCanvas.height = h; }
+  sgl.viewport(0, 0, w, h);
+
+  const shot = sampleTrack(trackPlayhead());
+  scenePointer.ex += (scenePointer.x - scenePointer.ex) * 0.06;
+  scenePointer.ey += (scenePointer.y - scenePointer.ey) * 0.06;
+  const look = [shot.look[0] + scenePointer.ex * 0.5, shot.look[1] - scenePointer.ey * 0.35, shot.look[2]];
+  const roll = scenePointer.ex * 0.03;
+
+  sgl.clearColor(0.918, 0.874, 0.788, 1);
+  sgl.clear(sgl.COLOR_BUFFER_BIT | sgl.DEPTH_BUFFER_BIT);
+  sgl.useProgram(sProg);
+  sgl.uniformMatrix4fv(sUni.uProj, false, new Float32Array(persp(38, w / h, 0.05, 100)));
+  sgl.uniformMatrix4fv(sUni.uView, false, new Float32Array(view3(shot.eye, look, [Math.sin(roll), Math.cos(roll), 0])));
+  sgl.uniform3f(sUni.uLight, 0.45, 0.82, 0.35);
+  sgl.uniform1f(sUni.uThreshold, 0.36);
+  sgl.uniform1f(sUni.uSmooth, 0.04);
+  sgl.uniform1f(sUni.uGrain, 0.5);
+  sgl.uniform1f(sUni.uSprayScale, 30);
+  sgl.uniform2f(sUni.uSprayRamp, 0.5, 0.47);
+  sgl.uniform3f(sUni.uBase, 0.898, 0.878, 0.827);
+  sgl.uniform3f(sUni.uShadow, 0.122, 0.263, 0.847);
+  sgl.bindVertexArray(sVao);
+  sgl.drawArrays(sgl.TRIANGLES, 0, sTri);
+  sgl.uniform3f(sUni.uBase, 0.09, 0.14, 0.32);
+  sgl.uniform3f(sUni.uShadow, 0.09, 0.14, 0.32);
+  sgl.uniform1f(sUni.uGrain, 0);
+  sgl.bindVertexArray(sEdgeVao);
+  sgl.drawArrays(sgl.LINES, 0, sEdge);
+  sgl.bindVertexArray(null);
+
+  /* the sheet closes over the scene once the flight is done */
+  const past = trackSections[SEGMENTS - 1];
+  if (past) {
+    const r = past.getBoundingClientRect();
+    scrim.style.opacity = String(Math.min(0.96, Math.max(0, (innerHeight - r.bottom) / innerHeight)));
+  }
+}
+
 /* boot */
 buildNotes();
 boot();
 addEventListener('scroll', requestFrame, { passive: true });
+addEventListener('pointermove', requestFrame, { passive: true });
 addEventListener('resize', () => { buildNotes(); requestFrame(); });
+try { initScene(); drawScene(); } catch (err) { console.error(err); }
+/* a slow tick so the pointer lerp settles and a tab that started hidden catches up */
+setInterval(requestFrame, 150);
 
-window.COPY = { STATES, insetsFor, applyState, scrubFrame, buildNotes, toneBehind };
+window.COPY = { STATES, insetsFor, applyState, scrubFrame, buildNotes, toneBehind, TRACK, sampleTrack, trackPlayhead, drawScene };
 </script>
 </body>
 </html>

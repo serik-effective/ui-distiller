@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blueprint cel shading — UI Distiller</title>
+<style>
+  :root {
+    --paper:#eadfc9; --ink:#1e1c18; --body:#636363; --accent:#283f7d;
+    --line:#cfc4ab; --panel:#fffbf3;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; }
+  body { background:var(--paper); color:var(--ink);
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:5; display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; padding:12px 20px; }
+  header b { font-size:14px; } header span { font-size:12px; color:var(--body); }
+
+  .hint { position:fixed; left:20px; bottom:96px; z-index:5; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+          font-size:11px; color:var(--body); display:grid; gap:3px; pointer-events:none;
+          background:color-mix(in srgb, var(--panel) 78%, transparent); padding:8px 10px; border-radius:2px; }
+  .hint b { color:var(--ink); font-weight:500; font-variant-numeric:tabular-nums; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:6; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:12px; flex-wrap:wrap; align-items:center; padding:7px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:6px; }
+  .ctrl label { color:var(--body); white-space:nowrap; }
+  .ctrl input[type="range"] { width:80px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:38px; }
+  .btn { font:inherit; font-size:12px; background:var(--panel); color:var(--ink); border:1px solid var(--line);
+         border-radius:2px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--ink); }
+  .btn[aria-pressed="true"] { background:var(--ink); color:var(--panel); border-color:var(--ink); }
+  .fallback { position:fixed; inset:0; display:none; place-items:center; z-index:3; color:var(--body); font-size:13px; }
+  @media (prefers-reduced-motion: reduce) { .btn, .hint { transition:none !important; } }
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+<div class="fallback" id="fallback">WebGL2 is unavailable, so this demo cannot draw.</div>
+
+<header><b>Blueprint cel shading</b>
+  <span>webgl · image-effect — move the pointer to open the blueprint; drag the wipe</span></header>
+
+<div class="hint">
+  <span>diffuse step <b id="thOut">0.36</b> → <b id="smOut">0.04</b></span>
+  <span>spray ramp <b id="sprayOut">0.50 / 0.47</b> · scale <b id="scaleOut">30</b></span>
+  <span>reveal radius <b id="radOut">0.00</b> · wipe <b id="wipeOut">0.00</b></span>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-th">threshold</label>
+    <input id="c-th" type="range" min="0" max="100" step="1" value="36"><output for="c-th">0.36</output></div>
+  <div class="ctrl"><label for="c-sm">smoothness</label>
+    <input id="c-sm" type="range" min="0" max="60" step="1" value="4"><output for="c-sm">0.04</output></div>
+  <div class="ctrl"><label for="c-spray">spray</label>
+    <input id="c-spray" type="range" min="0" max="100" step="1" value="50"><output for="c-spray">0.50</output></div>
+  <div class="ctrl"><label for="c-scale">spray scale</label>
+    <input id="c-scale" type="range" min="4" max="80" step="1" value="30"><output for="c-scale">30</output></div>
+  <div class="ctrl"><label for="c-noise">grain</label>
+    <input id="c-noise" type="range" min="0" max="100" step="1" value="42"><output for="c-noise">0.42</output></div>
+  <div class="ctrl"><label for="c-radius">radius</label>
+    <input id="c-radius" type="range" min="0" max="200" step="1" value="55"><output for="c-radius">0.55</output></div>
+  <div class="ctrl"><label for="c-wipe">wipe</label>
+    <input id="c-wipe" type="range" min="0" max="100" step="1" value="0"><output for="c-wipe">0.00</output></div>
+  <button class="btn" id="orbitBtn" aria-pressed="true">Orbit</button>
+  <button class="btn" id="debugBtn" aria-pressed="false">Show spray mask</button>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   The pattern — the source's material, rebuilt without its textures.
+
+   1. two-step diffuse:  d = smoothstep(uThreshold, uThreshold + uSmooth, N·L)
+                         color = mix(shadowColor, baseColor, d)
+   2. sprayed shadow:    sprayMask = smoothstep(uSprayRamp.x, uSprayRamp.y,
+                                                voronoi(uv * uSprayScale))
+                         the shadow is darkened THROUGH that mask, so the
+                         terminator breaks into stipple instead of a clean edge
+   3. pointer reveal:    dist = distance(worldPos, uMouseHitPos)
+                         radius = uRadius + noise * 0.05 + uRadiusExpand
+                         radius = mix(0.0, radius, uRadiusReveal)
+                         interaction = smoothstep(radius, radius - smoothness, dist)
+                         inside it, the surface becomes the blueprint version
+   4. wipe:              mappedX = map(uv.x, -0.3, 1.3, 0, 1)
+                         wipeFactor = smoothstep(1 - w + 0.1 + n*0.04,
+                                                 1 - w - 0.1 - n*0.04, mappedX)
+   5. grain:             blendOverlay(color, noise, strength), the strength
+                         ramped by world height
+   ══════════════════════════════════════════════════════════════════════ */
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const CONFIG = {
+  threshold: 0.36, smooth: 0.04,
+  sprayRamp: [0.50, 0.47], sprayScale: 30,
+  grain: 0.42, radius: 0.55, radiusReveal: 0, wipe: 0,
+  /* the orbit is ambient motion, so it starts off under prefers-reduced-motion;
+     the shader itself is what the demo is about and stays available */
+  orbit: !REDUCED, debug: false,
+};
+
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', { antialias: true });
+
+const VERT = `#version 300 es
+in vec3 aPos; in vec3 aNormal; in vec2 aUv;
+uniform mat4 uProj, uView;
+out vec3 vNormal; out vec3 vWorld; out vec2 vUv;
+void main() { vNormal = aNormal; vWorld = aPos; vUv = aUv; gl_Position = uProj * uView * vec4(aPos, 1.0); }`;
+
+const FRAG = `#version 300 es
+precision highp float;
+in vec3 vNormal; in vec3 vWorld; in vec2 vUv;
+uniform vec3 uBase, uShadow, uLight, uLineColor, uBlueprint;
+uniform vec3 uMouseHitPos;
+uniform float uThreshold, uSmooth, uSprayScale, uGrain, uTime;
+uniform float uRadius, uRadiusSmoothness, uRadiusReveal, uRadiusExpand, uWipeProgress;
+uniform vec2 uSprayRamp;
+uniform bool uDebugSpray;
+out vec4 outColor;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+vec2 hash2(vec2 p) { return fract(sin(vec2(dot(p, vec2(127.1,311.7)), dot(p, vec2(269.5,183.3)))) * 43758.5453); }
+
+/* value noise — stands in for the site's noise texture */
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1,0)), u.x),
+             mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), u.x), u.y);
+}
+
+/* voronoi — stands in for tVoronoi, which is what breaks the shadow edge
+   into spray rather than leaving it a clean line */
+float voronoi(vec2 p) {
+  vec2 n = floor(p), f = fract(p);
+  float best = 8.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 g = vec2(float(i), float(j));
+    vec2 o = hash2(n + g);
+    best = min(best, length(g + o - f));
+  }
+  return best;
+}
+
+float map(float v, float a, float b, float c, float d) { return c + (v - a) * (d - c) / (b - a); }
+vec3 blendOverlay(vec3 base, vec3 blend) {
+  return mix(2.0 * base * blend, 1.0 - 2.0 * (1.0 - base) * (1.0 - blend), step(0.5, base));
+}
+
+/* the blueprint version of the surface: ruled paper plus a line at the edges */
+vec3 blueprintAt(vec3 world, vec3 normal) {
+  vec2 uv = abs(normal.y) > 0.5 ? world.xz : (abs(normal.x) > 0.5 ? world.zy : world.xy);
+  vec2 g = abs(fract(uv * 8.0) - 0.5);
+  float line = 1.0 - smoothstep(0.0, 0.06, min(g.x, g.y));
+  vec2 g2 = abs(fract(uv * 2.0) - 0.5);
+  float major = 1.0 - smoothstep(0.0, 0.03, min(g2.x, g2.y));
+  return mix(uBlueprint, uLineColor, clamp(line * 0.5 + major * 0.85, 0.0, 1.0));
+}
+
+void main() {
+  vec3 N = normalize(vNormal);
+
+  /* 1 — two-step diffuse */
+  float d = max(dot(N, normalize(uLight)), 0.0);
+  d = smoothstep(uThreshold, uThreshold + uSmooth, d);
+  vec3 color = mix(uShadow, uBase, d);
+
+  /* 2 — the shadow edge broken by a voronoi spray mask */
+  vec2 sprayUv = (vUv - 0.5) * uSprayScale * 0.8 + 0.5;
+  float spray = smoothstep(uSprayRamp.x, uSprayRamp.y, voronoi(sprayUv));
+  float terminator = 1.0 - smoothstep(0.0, 0.35, abs(d - 0.5) * 2.0);   // near the edge only
+  color = mix(color, uShadow, spray * terminator * 0.85);
+  if (uDebugSpray) { outColor = vec4(vec3(spray), 1.0); return; }
+
+  /* 3 — the pointer reveal: inside the radius the surface is the blueprint */
+  float dist = distance(vWorld, uMouseHitPos);
+  float revealNoise = noise(vUv * 15.0) * 0.5 + 1.0;
+  float radius = uRadius + revealNoise * 0.05 + uRadiusExpand;
+  radius = mix(0.0, radius, uRadiusReveal);
+  float interaction = smoothstep(radius, radius - uRadiusSmoothness, dist);
+  color = mix(color, blueprintAt(vWorld, N), interaction);
+
+  /* 4 — the wipe, its edge softened by the same noise */
+  float mappedX = map(vUv.x, -0.3, 1.3, 0.0, 1.0);
+  float wipeFactor = smoothstep(1.0 - uWipeProgress + 0.1 + revealNoise * 0.04,
+                                1.0 - uWipeProgress - 0.1 - revealNoise * 0.04, mappedX) + 0.5;
+  wipeFactor = clamp(wipeFactor, 0.0, 1.0);
+  color = mix(uBase, color, wipeFactor);
+
+  /* 5 — grain, ramped by height */
+  float n = hash(floor(gl_FragCoord.xy * 0.8) + floor(uTime * 0.0));
+  float ramp = smoothstep(-1.0, 3.0, vWorld.y);
+  color = blendOverlay(color, vec3(mix(0.5, n, uGrain * (0.4 + 0.6 * ramp))));
+
+  outColor = vec4(color, 1.0);
+}`;
+
+/* ── geometry: the same procedural massing model, with UVs ── */
+function box(cx, cy, cz, sx, sy, sz, out) {
+  const h = [sx/2, sy/2, sz/2];
+  const faces = [
+    { n:[0,0,1],  v:[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]] },
+    { n:[0,0,-1], v:[[1,-1,-1],[-1,-1,-1],[-1,1,-1],[1,1,-1]] },
+    { n:[1,0,0],  v:[[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]] },
+    { n:[-1,0,0], v:[[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]] },
+    { n:[0,1,0],  v:[[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]] },
+    { n:[0,-1,0], v:[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]] },
+  ];
+  const uvs = [[0,0],[1,0],[1,1],[0,1]];
+  for (const f of faces) {
+    const q = f.v.map(v => [cx + v[0]*h[0], cy + v[1]*h[1], cz + v[2]*h[2]]);
+    for (const i of [0,1,2, 0,2,3]) { out.pos.push(...q[i]); out.nrm.push(...f.n); out.uv.push(...uvs[i]); }
+    for (const [a,b] of [[0,1],[1,2],[2,3],[3,0]]) {
+      out.edge.push(...q[a], ...q[b]);
+      out.edgeUv.push(0,0, 0,0);
+    }
+  }
+}
+
+function buildScene() {
+  const out = { pos: [], nrm: [], uv: [], edge: [], edgeUv: [] };
+  box(0, -0.05, 0, 8, 0.1, 6, out);
+  box(0, 0.02, 0.2, 3.6, 0.02, 2.8, out);
+  let seed = 11;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let gx = -3; gx <= 3; gx++) for (let gz = -2; gz <= 2; gz++) {
+    const dd = Math.hypot(gx/3, gz/2);
+    if (dd > 1.05 || rnd() < 0.2) continue;
+    const h = 0.18 + (1 - dd) * (0.5 + rnd() * 0.8);
+    box(gx * 0.42, 0.03 + h/2, gz * 0.42 + 0.2, 0.36, h, 0.36, out);
+  }
+  return out;
+}
+
+/* ── matrices ── */
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const norm=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const perspective=(f0,aspect,near,far)=>{const f=1/Math.tan((f0*Math.PI/180)/2),nf=1/(near-far);
+  return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0];};
+const lookAt=(eye,c,up)=>{const z=norm(sub(eye,c)),x=norm(cross(up,z)),y=cross(z,x);
+  return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot3(x,eye),-dot3(y,eye),-dot3(z,eye),1];};
+
+let prog, vao, edgeVao, triCount, edgeCount, uni = {}, ready = false;
+function compile(t, src) {
+  const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+function initGL() {
+  if (!gl) { document.getElementById('fallback').style.display = 'grid'; return false; }
+  prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+
+  const scene = buildScene();
+  triCount = scene.pos.length / 3;
+  edgeCount = scene.edge.length / 3;
+  const aPos = gl.getAttribLocation(prog, 'aPos'),
+        aNrm = gl.getAttribLocation(prog, 'aNormal'),
+        aUv  = gl.getAttribLocation(prog, 'aUv');
+  const mk = (data, loc, size) => {
+    const b = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+  };
+  vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  mk(scene.pos, aPos, 3); mk(scene.nrm, aNrm, 3); mk(scene.uv, aUv, 2);
+  edgeVao = gl.createVertexArray(); gl.bindVertexArray(edgeVao);
+  mk(scene.edge, aPos, 3); mk(new Array(edgeCount*3).fill(0), aNrm, 3); mk(scene.edgeUv, aUv, 2);
+  gl.bindVertexArray(null);
+
+  for (const n of ['uProj','uView','uBase','uShadow','uLight','uLineColor','uBlueprint','uMouseHitPos',
+                   'uThreshold','uSmooth','uSprayScale','uGrain','uTime','uRadius','uRadiusSmoothness',
+                   'uRadiusReveal','uRadiusExpand','uWipeProgress','uSprayRamp','uDebugSpray'])
+    uni[n] = gl.getUniformLocation(prog, n);
+
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.POLYGON_OFFSET_FILL);
+  gl.polygonOffset(1, 1);
+  ready = true;
+  return true;
+}
+
+/* the pointer becomes a world-space hit position on the model's plane —
+   the same idea as the site's uMouseHitPos, without a raycaster */
+const hit = { x: 0, y: 0.3, z: 0, tx: 0, tz: 0, reveal: 0, target: 0 };
+addEventListener('pointermove', e => {
+  const nx = (e.clientX / innerWidth) * 2 - 1;
+  const ny = (e.clientY / innerHeight) * 2 - 1;
+  hit.tx = nx * 2.4;
+  hit.tz = ny * 1.8 + 0.2;
+  hit.target = 1;
+  kick();
+}, { passive: true });
+addEventListener('pointerleave', () => { hit.target = 0; kick(); });
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.round(innerWidth * dpr), h = Math.round(innerHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+
+let raf = 0, t0 = performance.now(), angle = 0.9;
+function frame(now) {
+  raf = 0;
+  const time = ((now || performance.now()) - t0) / 1000;
+  if (CONFIG.orbit) angle = 0.9 + Math.sin(time * 0.13) * 0.5;
+
+  hit.x += (hit.tx - hit.x) * 0.12;
+  hit.z += (hit.tz - hit.z) * 0.12;
+  hit.reveal += (hit.target - hit.reveal) * 0.08;
+
+  document.getElementById('radOut').textContent = (CONFIG.radius * hit.reveal).toFixed(2);
+
+  if (ready) {
+    resize();
+    const eye = [Math.sin(angle) * 4.6, 2.9, Math.cos(angle) * 4.6];
+    const proj = perspective(36, canvas.width / canvas.height, 0.05, 100);
+    const view = lookAt(eye, [0, 0.42, 0.2], [0, 1, 0]);
+
+    gl.clearColor(0.918, 0.874, 0.788, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.useProgram(prog);
+    gl.uniformMatrix4fv(uni.uProj, false, new Float32Array(proj));
+    gl.uniformMatrix4fv(uni.uView, false, new Float32Array(view));
+    gl.uniform3f(uni.uLight, 0.45, 0.82, 0.35);
+    gl.uniform3f(uni.uBase, 0.898, 0.878, 0.827);
+    gl.uniform3f(uni.uShadow, 0.122, 0.263, 0.847);
+    gl.uniform3f(uni.uLineColor, 0.09, 0.14, 0.32);
+    gl.uniform3f(uni.uBlueprint, 0.79, 0.83, 0.88);
+    gl.uniform3f(uni.uMouseHitPos, hit.x, hit.y, hit.z);
+    gl.uniform1f(uni.uThreshold, CONFIG.threshold);
+    gl.uniform1f(uni.uSmooth, CONFIG.smooth);
+    gl.uniform1f(uni.uSprayScale, CONFIG.sprayScale);
+    gl.uniform1f(uni.uGrain, CONFIG.grain);
+    gl.uniform1f(uni.uTime, time);
+    gl.uniform1f(uni.uRadius, CONFIG.radius);
+    gl.uniform1f(uni.uRadiusSmoothness, 0.06);
+    gl.uniform1f(uni.uRadiusReveal, hit.reveal);
+    gl.uniform1f(uni.uRadiusExpand, 0);
+    gl.uniform1f(uni.uWipeProgress, CONFIG.wipe);
+    gl.uniform2f(uni.uSprayRamp, CONFIG.sprayRamp[0], CONFIG.sprayRamp[1]);
+    gl.uniform1i(uni.uDebugSpray, CONFIG.debug ? 1 : 0);
+
+    gl.bindVertexArray(vao);
+    gl.drawArrays(gl.TRIANGLES, 0, triCount);
+
+    gl.uniform3f(uni.uBase, 0.09, 0.14, 0.32);
+    gl.uniform3f(uni.uShadow, 0.09, 0.14, 0.32);
+    gl.uniform1f(uni.uGrain, 0.0);
+    gl.uniform1f(uni.uRadiusReveal, 0.0);
+    gl.bindVertexArray(edgeVao);
+    gl.drawArrays(gl.LINES, 0, edgeCount);
+    gl.bindVertexArray(null);
+  }
+
+  /* keep animating only while something is moving */
+  if (CONFIG.orbit || Math.abs(hit.target - hit.reveal) > 0.002) kick();
+}
+function kick() { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+
+/* controls */
+const bind = (id, fn, fmt, hud) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => {
+    const v = Number(el.value); fn(v);
+    out.textContent = fmt(v);
+    if (hud) document.getElementById(hud).textContent = fmt(v);
+    kick();
+  };
+  el.addEventListener('input', go); go();
+};
+bind('c-th',     v => CONFIG.threshold = v / 100, v => (v / 100).toFixed(2), 'thOut');
+bind('c-sm',     v => CONFIG.smooth = v / 100, v => (v / 100).toFixed(2), 'smOut');
+bind('c-spray',  v => { CONFIG.sprayRamp = [v / 100, v / 100 - 0.03]; }, v => (v / 100).toFixed(2));
+bind('c-scale',  v => CONFIG.sprayScale = v, v => String(v), 'scaleOut');
+bind('c-noise',  v => CONFIG.grain = v / 100, v => (v / 100).toFixed(2));
+bind('c-radius', v => CONFIG.radius = v / 100, v => (v / 100).toFixed(2));
+bind('c-wipe',   v => CONFIG.wipe = v / 100, v => (v / 100).toFixed(2), 'wipeOut');
+document.getElementById('sprayOut').textContent = CONFIG.sprayRamp.map(v => v.toFixed(2)).join(' / ');
+
+document.getElementById('orbitBtn').setAttribute('aria-pressed', String(CONFIG.orbit));
+document.getElementById('orbitBtn').addEventListener('click', e => {
+  CONFIG.orbit = !CONFIG.orbit;
+  e.currentTarget.setAttribute('aria-pressed', String(CONFIG.orbit));
+  kick();
+});
+document.getElementById('debugBtn').addEventListener('click', e => {
+  CONFIG.debug = !CONFIG.debug;
+  e.currentTarget.setAttribute('aria-pressed', String(CONFIG.debug));
+  e.currentTarget.textContent = CONFIG.debug ? 'Hide spray mask' : 'Show spray mask';
+  kick();
+});
+
+try { initGL(); } catch (err) { console.error(err); document.getElementById('fallback').style.display = 'grid'; }
+if (ready) { resize(); frame(); }
+/* a slow tick so a demo that starts in a hidden tab still catches up */
+setInterval(kick, 200);
+
+window.CEL = { CONFIG, frame, hit, kick };
+</script>
+</body>
+</html>
