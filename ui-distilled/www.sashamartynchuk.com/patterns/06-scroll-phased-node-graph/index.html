@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scroll-phased node graph — UI Distiller</title>
+<style>
+  :root {
+    --bg:#000; --fg:#fff; --muted:#8b8b8b; --line:#1e1e1e; --accent:#a78bfa; --panel:#0e0e0e;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--fg);
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:5; display:flex; gap:12px; align-items:baseline; flex-wrap:wrap;
+           padding:12px 20px; }
+  header b { font-size:14px; } header span { font-size:12px; color:var(--muted); }
+
+  /* the stage is sticky: the section is tall, the canvas holds still and the
+     scroll inside it is the animation's only clock */
+  .stage-section { height:520vh; position:relative; }
+  .stage { position:sticky; top:0; height:100vh; overflow:hidden; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .stage__title { position:absolute; left:50%; top:12%; transform:translateX(-50%);
+                  font-size:clamp(26px,5vw,64px); letter-spacing:-.04em; margin:0; opacity:0; transition:opacity .5s ease; }
+  .stage__title.on { opacity:1; }
+
+  .intro, .outro { min-height:80vh; display:grid; align-content:center; gap:14px; padding:0 clamp(20px,6vw,90px); }
+  .intro h1 { margin:0; font-size:clamp(28px,5vw,58px); line-height:1; letter-spacing:-.035em; font-weight:500; max-width:16ch; }
+  .intro p, .outro p { color:var(--muted); max-width:52ch; margin:0; }
+
+  .hud { position:fixed; right:20px; bottom:62px; z-index:6; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+         font-size:11px; color:var(--muted); display:grid; gap:3px; justify-items:end; text-align:right;
+         background:rgba(0,0,0,.55); padding:8px 10px; border-radius:2px; pointer-events:none; }
+  .hud b { color:var(--fg); font-weight:500; font-variant-numeric:tabular-nums; }
+  .phasebar { width:230px; height:5px; background:#1c1c1c; position:relative; margin-top:4px; }
+  .phasebar i { position:absolute; inset:0 auto 0 0; background:var(--accent); }
+  .phasebar u { position:absolute; top:-4px; width:1px; height:13px; background:#5a5a5a; }
+  .phasebar u.hot { background:var(--fg); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:7; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding:7px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:88px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:42px; }
+  .btn { font:inherit; font-size:12px; background:transparent; color:var(--fg); border:1px solid var(--line);
+         border-radius:2px; padding:5px 10px; cursor:pointer; }
+  .btn:hover { border-color:var(--fg); }
+  .btn[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+
+  @media (prefers-reduced-motion: reduce) { .stage__title { transition:none; } }
+</style>
+</head>
+<body>
+
+<header><b>Scroll-phased node graph</b>
+  <span>scroll · canvas — one progress value, nine named phases; drag a node, click one to pin it</span></header>
+
+<section class="intro">
+  <h1>The whole scene is one number.</h1>
+  <p>Scroll through the stage below. Nodes rise, link to a hub, then detach and leave — and none of those are separate animations. Every stage is a named window on a single 0–1 progress, with each node given its own delay inside its window.</p>
+</section>
+
+<section class="stage-section" id="stageSection">
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <h2 class="stage__title" id="title">Listening</h2>
+  </div>
+</section>
+
+<section class="outro">
+  <p>Past the stage the canvas stops drawing entirely: at either extreme of the progress it fades over ~180ms, clears itself and releases the cursor, so nothing off-screen costs a frame.</p>
+</section>
+
+<div class="hud">
+  <span>progress <b id="pOut">0.000</b> · phase <b id="phaseOut">—</b></span>
+  <span>nodes <b id="nOut">0</b> · linked <b id="lOut">0</b></span>
+  <span class="phasebar" id="bar"><i id="fill"></i></span>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-count">nodes</label>
+    <input id="c-count" type="range" min="12" max="120" step="2" value="58"><output for="c-count">58</output></div>
+  <div class="ctrl"><label for="c-overlap">stagger overlap</label>
+    <input id="c-overlap" type="range" min="5" max="100" step="5" value="55"><output for="c-overlap">0.55</output></div>
+  <div class="ctrl"><label for="c-follow">follow</label>
+    <input id="c-follow" type="range" min="1" max="30" step="1" value="7"><output for="c-follow">0.07</output></div>
+  <div class="ctrl"><label for="c-parallax">parallax</label>
+    <input id="c-parallax" type="range" min="0" max="60" step="2" value="26"><output for="c-parallax">26</output></div>
+  <button class="btn" id="pulseBtn" aria-pressed="true">Link pulses</button>
+  <button class="btn" id="phaseBtn" aria-pressed="false">Show phases</button>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════
+   The pattern
+
+   A canvas scene whose entire life is expressed as named windows on one
+   scroll progress. Nothing plays; everything is sampled.
+
+     PHASES = { riseStart: .011, riseEnd: .216, connectStart: .228, … }
+
+   Each node then gets its own sub-window inside a phase, from its own
+   deterministic delay — which is how you stagger inside a scrub, where a
+   timeline's stagger has nowhere to live.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const PHASES = {
+  titleIn: 0.056,
+  hubStart: 0.005, hubEnd: 0.063,
+  riseStart: 0.011, riseEnd: 0.216,
+  connectStart: 0.228, connectEnd: 0.569,
+  exitStart: 0.58, detach: 0.86,
+};
+
+const CONFIG = { count: 58, overlap: 0.55, follow: 0.07, parallax: 26, pulses: true, showPhases: false };
+
+/* deterministic per-node randomness: the layout is generated, never authored,
+   and is identical on every load */
+const rnd = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+
+const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+const smootherstep = t => t * t * t * (t * (t * 6 - 15) + 10);
+/* the site's own rise ease: overshoots slightly and settles */
+const backish = t => 1 + 1.9 * Math.pow(t - 1, 3) + 0.9 * Math.pow(t - 1, 2);
+
+/* A staggered window inside a phase.
+   `delay` is the node's own 0–1 offset, `overlap` how much of the phase every
+   node still gets: at overlap 1 all nodes move together, at 0 they queue. */
+function window01(p, start, end, delay, overlap) {
+  const a = start + (end - start) * delay * (1 - overlap);
+  const b = a + (end - start) * overlap;
+  return clamp01((p - a) / Math.max(1e-4, b - a));
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const stageSection = document.getElementById('stageSection');
+const titleEl = document.getElementById('title');
+const pOut = document.getElementById('pOut'), phaseOut = document.getElementById('phaseOut');
+const nOut = document.getElementById('nOut'), lOut = document.getElementById('lOut');
+const fill = document.getElementById('fill'), bar = document.getElementById('bar');
+
+let W = 0, H = 0, dpr = 1, scale = 1;
+let nodes = [];
+const hub = { x: 0.5, y: 0.56, r: 21 };
+const pointer = { x: 0, y: 0, tx: 0, ty: 0, px: -1e5, py: -1e5 };
+let hovered = -1, dragging = -1, dragMoved = 0;
+
+function build() {
+  nodes = Array.from({ length: CONFIG.count }, (_, i) => {
+    const big = rnd(i, 9) > 0.82;
+    let y = rnd(i, 2);
+    if (y > 0.28 && y < 0.46) y += 0.2;            // keep the middle band clear for the hub
+    return {
+      x: 0.04 + rnd(i, 1) * 0.92, y: clamp01(y),
+      r0: big ? 26 + rnd(i, 3) * 24 : 3 + rnd(i, 3) * 9, r: 0,
+      soft: rnd(i, 10) > 0.62,
+      riseDelay: rnd(i, 4), linkDelay: rnd(i, 5), exitDelay: rnd(i, 6),
+      drift: (rnd(i, 7) - 0.5) * 0.04, arc: (rnd(i, 11) - 0.5) * 0.22,
+      fx: 0.13 + rnd(i, 12) * 0.2, fy: 0.11 + rnd(i, 13) * 0.17,
+      fp: rnd(i, 14) * Math.PI * 2, fq: rnd(i, 15) * Math.PI * 2,
+      amp: 0.01 + rnd(i, 16) * 0.022, pace: 0.85 + rnd(i, 17) * 0.4,
+      pulseSpeed: 0.1 + rnd(i, 18) * 0.16, pulsePhase: rnd(i, 19),
+      breath: 0.9 + rnd(i, 20) * 0.9, follow: 0.045 + rnd(i, 21) * 0.055,
+    };
+  });
+  resize();
+  nOut.textContent = String(nodes.length);
+}
+
+function resize() {
+  const r = document.getElementById('stage').getBoundingClientRect();
+  dpr = Math.min(1.25, devicePixelRatio || 1);        // the site caps DPR here too
+  W = r.width; H = r.height;
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  scale = Math.min(1.1, Math.max(0.5, Math.pow(Math.min(W, H) / 1233, 0.6)));
+  for (const n of nodes) n.r = n.r0 * scale;
+  hub.r = 21 * scale;
+}
+
+/* the stage's own progress: 0 when it pins, 1 when it releases */
+function progress() {
+  const r = stageSection.getBoundingClientRect();
+  const total = r.height - innerHeight;
+  return clamp01(-r.top / Math.max(1, total));
+}
+
+function phaseName(p) {
+  if (p < PHASES.riseStart) return 'hub';
+  if (p < PHASES.riseEnd) return 'rise';
+  if (p < PHASES.connectStart) return 'hold';
+  if (p < PHASES.connectEnd) return 'connect';
+  if (p < PHASES.detach) return 'detach';
+  if (p < 1) return 'exit';
+  return 'done';
+}
+
+let idle = false, alpha = 1, last = performance.now(), raf = 0;
+
+function render(now) {
+  raf = 0;
+  const dt = Math.min(48, now - last); last = now;
+  const t = now / 1000;
+  const p = progress();
+
+  pOut.textContent = p.toFixed(3);
+  phaseOut.textContent = phaseName(p);
+  fill.style.width = (p * 100).toFixed(1) + '%';
+  titleEl.classList.toggle('on', p > PHASES.titleIn && p < PHASES.exitStart);
+
+  /* off-stage the scene stops costing anything: fade, clear, release */
+  if (p >= 0.999 || p <= 0.0005) {
+    if (!idle) {
+      alpha = Math.max(0, alpha - dt / 180);
+      canvas.style.opacity = alpha.toFixed(3);
+      if (alpha <= 0) { ctx.clearRect(0, 0, W, H); canvas.style.opacity = ''; document.body.style.cursor = ''; idle = true; }
+      kick();
+    }
+    return;
+  }
+  if (idle || alpha < 1) { alpha = 1; canvas.style.opacity = ''; idle = false; }
+
+  ctx.clearRect(0, 0, W, H);
+  const hx = hub.x * W, hy = hub.y * H;
+
+  pointer.x += (pointer.tx - pointer.x) * 0.05;
+  pointer.y += (pointer.ty - pointer.y) * 0.05;
+
+  const exit = clamp01((p - PHASES.exitStart) / (1 - PHASES.exitStart));
+  const detach = clamp01((p - PHASES.detach) / (1 - PHASES.detach));
+
+  /* ── positions ── */
+  let nearest = -1, nearestDist = Infinity;
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    const rise = clamp01(window01(p, PHASES.riseStart, PHASES.riseEnd, n.riseDelay, CONFIG.overlap) * n.pace);
+    const X = backish(rise);
+    const gone = smootherstep(clamp01((exit - n.exitDelay * 0.45) / 0.55));
+    const live = X * (1 - gone);
+
+    const wob = Math.sin(t * n.fx + n.fp) * n.amp * live;
+    const wobY = Math.cos(t * n.fy + n.fq) * n.amp * 0.7 * live;
+    const arc = n.arc * (1 - X);
+    /* parallax by size: the big nodes ride the pointer further */
+    const depth = (0.25 + Math.min(n.r, 50) / 50) * live;
+
+    let tx = (n.x + arc + wob + n.drift * gone) * W - pointer.x * CONFIG.parallax * depth;
+    let ty = (n.y + (1 - X) * 0.62 + wobY - 1.18 * gone) * H - pointer.y * (CONFIG.parallax * 0.62) * depth;
+
+    n._len = Math.hypot(n.x * W - hx, n.y * H - hy) * 1.02;
+
+    if (i === dragging) {                       // a dragged node is on a leash
+      let dx = pointer.px - hx, dy = pointer.py - hy;
+      const d = Math.hypot(dx, dy) || 1;
+      if (d > n._len) { dx *= n._len / d; dy *= n._len / d; }
+      tx = hx + dx; ty = hy + dy;
+    }
+
+    /* frame-rate independent smoothing: the same motion at 60Hz and 120Hz,
+       which a plain `v += (t - v) * k` does not give you */
+    const k = i === dragging ? 0.35 : CONFIG.follow / (1 + Math.min(n.r, 50) / 60);
+    const s = 1 - Math.pow(1 - k, dt / 16.667);
+    const targetAlpha = clamp01(rise * 2.2);
+    if (n._x === undefined) { n._x = tx; n._y = ty; n._a = targetAlpha; }
+    n._x += (tx - n._x) * s;
+    n._y += (ty - n._y) * s;
+    n._a += (targetAlpha - n._a) * Math.min(1, s * 2.2);
+
+    if (n._a > 0.15) {
+      const d = Math.hypot(pointer.px - n._x, pointer.py - n._y);
+      if (d < Math.max(n.r * 1.6, 22 * scale) && d < nearestDist) { nearestDist = d; nearest = i; }
+    }
+  }
+  hovered = nearest;
+  document.body.style.cursor = nearest >= 0 ? 'pointer' : '';
+
+  /* ── links ── */
+  let linked = 0;
+  if (p > PHASES.connectStart) {
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const k = smootherstep(window01(p, PHASES.connectStart, PHASES.connectEnd, n.linkDelay, 0.45));
+      if (k <= 0 || n._a <= 0.01) continue;
+      linked++;
+      const q = easeOutCubic(clamp01((detach - n.linkDelay * 0.5) / 0.5));   // how far the link has let go
+      const big = Math.min(n.r, 50) / 50;
+      const a = k * n._a;
+      const reach = n._len * 0.34;
+
+      /* the far end travels from the hub outward as the link detaches */
+      const ex = hx + (n._x + Math.sin(t * 0.85 + n.fq) * reach * 0.22 * 1.15 - hx) * q;
+      const ey = hy + (n._y + reach - hy) * q;
+      const fx = n._x + (ex - n._x) * k, fy = n._y + (ey - n._y) * k;
+
+      const dist = Math.hypot(n._x - hx, n._y - hy);
+      const slack = clamp01(1 - dist / Math.max(n._len, 1));
+      const sag = slack * n._len * 0.3 * (1 - q) * k;
+      const mx = (n._x + fx) / 2, my = (n._y + fy) / 2 + sag;
+      const c1x = mx + (n._x + Math.sin(t * 1.3 + n.fp) * reach * 0.1 - mx) * q;
+      const c1y = my + (n._y + reach * 0.45 - my) * q;
+      const c2x = mx + (fx + Math.sin(t * 0.85 + n.fq) * reach * 0.22 * 0.4 - mx) * q;
+      const c2y = my + (fy - reach * 0.12 - my) * q;
+
+      ctx.lineWidth = (0.45 + big * 0.45) * (0.85 + (1 - slack) * 0.3) * scale;
+      ctx.strokeStyle = `rgba(255,255,255,${(0.24 + big * 0.32) * a})`;
+      ctx.beginPath();
+      ctx.moveTo(n._x, n._y);
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, fx, fy);
+      ctx.stroke();
+
+      /* a pulse travelling the same Bézier, evaluated directly rather than
+         animated along a path */
+      if (CONFIG.pulses && k > 0.98 && q < 0.4) {
+        const u = 1 - ((t * n.pulseSpeed + n.pulsePhase) % 1);
+        const iv = 1 - u;
+        const px = iv*iv*iv*n._x + 3*iv*iv*u*c1x + 3*iv*u*u*c2x + u*u*u*fx;
+        const py = iv*iv*iv*n._y + 3*iv*iv*u*c1y + 3*iv*u*u*c2y + u*u*u*fy;
+        const glow = Math.sin(u * Math.PI) * a * 0.95 * (1 - q / 0.4);
+        if (glow > 0.02) {
+          const rad = 4 + big * 4;
+          const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
+          g.addColorStop(0, `rgba(255,255,255,${glow})`);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+  }
+  lOut.textContent = String(linked);
+
+  /* ── the hub, then the nodes ── */
+  const hubIn = smootherstep(clamp01((p - PHASES.hubStart) / (PHASES.hubEnd - PHASES.hubStart))) * (1 - exit);
+  if (hubIn > 0.01) {
+    ctx.fillStyle = `rgba(255,255,255,${0.9 * hubIn})`;
+    ctx.beginPath(); ctx.arc(hx, hy, hub.r * hubIn, 0, Math.PI * 2); ctx.fill();
+  }
+
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    if (n._a <= 0.01) continue;
+    const want = i === hovered ? 1 : 0;
+    const s = 1 - Math.pow(1 - 0.16, dt / 16.667);
+    n._h = (n._h || 0) + (want - (n._h || 0)) * s;
+    const breath = 1 + Math.sin(t * n.breath * 0.5 + n.fp) * 0.05;
+    const r = n.r * breath * (1 + n._h * 0.35);
+
+    if (n.soft) {
+      const g = ctx.createRadialGradient(n._x, n._y, 0, n._x, n._y, r * 2.2);
+      g.addColorStop(0, `rgba(255,255,255,${0.5 * n._a})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(n._x, n._y, r * 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = `rgba(255,255,255,${(0.88 + n._h * 0.12) * n._a})`;   // the source draws them near-white
+    ctx.beginPath(); ctx.arc(n._x, n._y, r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  kick();
+}
+/* cancel-and-rerequest, never a boolean latch */
+function kick() { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }
+
+/* ── input ── */
+addEventListener('pointermove', e => {
+  pointer.tx = (e.clientX / innerWidth) * 2 - 1;
+  pointer.ty = (e.clientY / innerHeight) * 2 - 1;
+  const r = canvas.getBoundingClientRect();
+  pointer.px = e.clientX - r.left; pointer.py = e.clientY - r.top;
+  if (dragging >= 0) dragMoved += Math.abs(e.movementX) + Math.abs(e.movementY);
+}, { passive: true });
+canvas.addEventListener('pointerdown', e => {
+  if (hovered < 0) return;
+  dragging = hovered; dragMoved = 0;
+  canvas.setPointerCapture?.(e.pointerId);
+});
+addEventListener('pointerup', () => { dragging = -1; });
+addEventListener('scroll', kick, { passive: true });
+addEventListener('resize', () => { resize(); kick(); });
+
+/* ── controls ── */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); kick(); };
+  el.addEventListener('input', go); go();
+};
+bind('c-count', v => { CONFIG.count = v; build(); }, v => String(v));
+bind('c-overlap', v => CONFIG.overlap = v / 100, v => (v / 100).toFixed(2));
+bind('c-follow', v => CONFIG.follow = v / 100, v => (v / 100).toFixed(2));
+bind('c-parallax', v => CONFIG.parallax = v, v => String(v));
+document.getElementById('pulseBtn').addEventListener('click', e => {
+  CONFIG.pulses = !CONFIG.pulses;
+  e.currentTarget.setAttribute('aria-pressed', String(CONFIG.pulses));
+  kick();
+});
+document.getElementById('phaseBtn').addEventListener('click', e => {
+  CONFIG.showPhases = !CONFIG.showPhases;
+  e.currentTarget.setAttribute('aria-pressed', String(CONFIG.showPhases));
+  bar.querySelectorAll('u').forEach(u => u.remove());
+  if (!CONFIG.showPhases) return;
+  for (const [name, at] of Object.entries(PHASES)) {
+    const u = document.createElement('u');
+    u.style.left = (at * 100) + '%';
+    u.title = name;
+    if (/Start|End/.test(name)) u.className = 'hot';
+    bar.appendChild(u);
+  }
+});
+
+build();
+kick();
+window.GRAPH = { PHASES, CONFIG, nodes, render, progress, window01, build };
+</script>
+</body>
+</html>

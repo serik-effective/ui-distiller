@@ -4,7 +4,7 @@ URL:
 https://www.sashamartynchuk.com/
 
 Analyzed:
-2026-09-04 · 2 pages (`/`, `/project/by-kin`-equivalent case study) · 7 candidates · 5 distilled
+2026-09-04 · 2 pages (`/`, `/project/by-kin`-equivalent case study) · 8 candidates · 6 distilled
 
 ## Design language
 
@@ -32,10 +32,23 @@ Confirmed:
 
 - GSAP with ScrollTrigger, Lenis (bundled inside `elastic-pulse.js` rather than exposed globally), and SplitType.
 - Hand-written, descriptively named modules — `page-bend`, `title-warp`, `elastic-pulse`, `fold-mode`, `viewport`, `gallery-data` — with the tuning values in CSS custom properties. The mechanisms could be read rather than inferred.
-- WebGL2 with a custom vertex shader for the display type; a third-party particle canvas for the Approach field, with a radial-gradient fallback behind it.
+- WebGL2 with a custom vertex shader for the display type.
+- A full-screen 2D canvas (`.listening__canvas`) drawn by the site's **own** code in `main-DvstoWIA.js`: a scroll-phased node graph, distilled as pattern 06. An earlier version of this report described it as a third-party particle canvas — that was wrong. The third-party runtime (Unicorn Studio, with a CSS radial-gradient fallback) drives the separate `FOCUS` field further down the same section.
 - Modern CSS in production: `mask-image`, `repeating-conic-gradient`, `mix-blend-mode: screen`, `perspective-origin` animated per frame, `position: sticky`, SVG filters, `prefers-reduced-motion` branches.
 - Platform CSS available and unused: `:has()`, `@starting-style`, `allow-discrete`, scroll-driven animations, view transitions.
 - Six case-study routes exist and are only discoverable through the sitemap: /okx, /pangeam, /keyword, /globaltrack, /lumus-ai, /payhoa.
+
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| `.stage-gl` | webgl2 | sized on demand | hero band | yes (scrubbed warp progress) | distilled as pattern 03 |
+| `.listening__canvas` | 2d | 1440×900 | 100% | yes (5/5 distinct frames across a stepped sweep) | distilled as pattern 06 |
+| `focus-boom` | third-party (Unicorn Studio) | — | full section | ambient | not distilled: a hosted scene, not the site's own code. Its CSS radial-gradient fallback is what pattern 02 recreates. |
+
+What scrolls: `window`, smoothed by Lenis. Scroll drives geometry directly — the fold's per-row
+transforms, the warp's integrated curvature, and the node graph's phase table — rather than
+triggering play-once animations.
 
 ## Best patterns
 
@@ -97,3 +110,12 @@ Pattern 02 was shot against a reference frame of the original section at 1440×9
 - The Approach particle field renders into a third-party canvas. Pattern 02 distils the CSS burst that surrounds it; the field itself is someone else's runtime and is out of scope.
 - Two candidates were rejected: the copy-to-clipboard confetti burst (3.5 — 26 rects, gravity 900, alpha `1 − (t/T)²`; well made, but confetti is common) and the infinite hero grid, which was left unmeasured this run.
 - Lenis is bundled rather than exposed, so scroll had to be driven natively when measuring.
+
+### 06 — Scroll-phased node graph
+
+Added on a second pass, after a re-audit found the site's own full-screen 2D canvas had been
+mis-attributed to a third-party runtime and left undistilled. Its whole life is nine named windows
+on one scroll progress (`riseStart .011 → riseEnd .216`, `connectStart .228 → connectEnd .569`,
+`exitStart .58`, `detach .86`), with every node staggered inside its phase by its own hashed delay,
+frame-rate-independent smoothing scaled by node size, links as Béziers whose control points migrate
+on the detach progress, and a canvas that fades, clears and stops drawing at either extreme.

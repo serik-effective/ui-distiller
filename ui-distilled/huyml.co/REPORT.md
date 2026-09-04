@@ -38,6 +38,17 @@ Confirmed:
 - No native scrolling anywhere: `document.documentElement.scrollHeight === innerHeight` on the homepage.
 - Platform CSS available and unused: `:has()`, `@starting-style`, `allow-discrete`, scroll-driven animations, view transitions.
 
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| #0 | webgl2 | 2560×1600 (DPR 2) | 100% | yes (6/6 distinct frames across a stepped sweep) | distilled as pattern 01 — the work belt is drawn here, not in the DOM |
+| #1 | 2d | 216×186 | 1% | no | not distilled: a small chrome readout, one declaration's worth of idea |
+
+What scrolls: `window` — but there is nothing to scroll. `document.documentElement.scrollHeight`
+equals `innerHeight` on the homepage: the wheel is an input to a simulation, not a way to move a
+document, which is why the belt keeps drifting with no input at all.
+
 ## Best patterns
 
 | # | Pattern | Category | Distill score | Difficulty |

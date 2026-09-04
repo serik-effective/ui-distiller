@@ -283,3 +283,60 @@ Fire the trigger immediately before running it. The resulting position/time tabl
 - Record source page URL per candidate — READMEs need the exact page, not just the domain.
 - If an asset 404s, is blocked by CORS, or exceeds the size cap, note it and move on.
 - Never fetch anything behind auth. Never retry a 403 with altered headers.
+
+## Finding the real scroll container, and stepping it
+
+```js
+/* what actually scrolls — a smooth-scroll library usually moves it off window */
+(() => {
+  const out = [];
+  for (const el of document.querySelectorAll('div, main, [data-scroll-container]')) {
+    const oy = getComputedStyle(el).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 40)
+      out.push({ el: el.className || el.tagName, h: el.scrollHeight, ch: el.clientHeight });
+  }
+  return { bodyOverflow: getComputedStyle(document.body).overflow,
+           docHeight: document.documentElement.scrollHeight,
+           containers: out.sort((a, b) => b.h - a.h).slice(0, 3) };
+})()
+```
+
+```js
+/* step, never jump: a single assignment fires the DOM's scroll listeners while
+   every scrubbed animation stays parked for want of frames */
+async (target, steps = 24, sel = null) => {
+  const el = sel ? document.querySelector(sel) : null;
+  const read = () => (el ? el.scrollTop : scrollY);
+  const write = v => (el ? (el.scrollTop = v) : scrollTo(0, v));
+  const from = read();
+  for (let i = 1; i <= steps; i++) {
+    write(from + (target - from) * (i / steps));
+    await new Promise(r => requestAnimationFrame(r));
+  }
+  return read();
+}
+```
+
+## Reading a canvas you did not draw
+
+```js
+/* the census: context, backing size, share of the viewport */
+[...document.querySelectorAll('canvas')].map(c => {
+  let ctx = 'unknown';
+  for (const k of ['webgl2', 'webgl', '2d']) { try { if (c.getContext(k)) { ctx = k; break; } } catch {} }
+  const r = c.getBoundingClientRect();
+  return { ctx, backing: [c.width, c.height], css: [r.width | 0, r.height | 0],
+           coverage: +((r.width * r.height) / (innerWidth * innerHeight)).toFixed(2) };
+})
+```
+
+`toDataURL()` on a WebGL canvas usually returns a blank frame, because the drawing buffer is not
+preserved — that is a property of the context, not evidence that nothing renders. Two ways round it:
+
+- from outside the page, screenshot the canvas's bounding box (`page.screenshot({ clip })`) and hash
+  the bytes; comparing hashes across a stepped scroll tells you whether the render is scroll-driven;
+- from inside, `gl.readPixels` immediately after a draw call — patch `requestAnimationFrame` to run
+  the site's own callback yourself if the tab is throttled.
+
+The shaders themselves are usually readable in the shipped chunks: grep the JS for `gl_Position`,
+`void main()`, `uniform float u`, and the uniform names will tell you what the material is doing.

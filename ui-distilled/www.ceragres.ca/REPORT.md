@@ -43,6 +43,15 @@ Confirmed:
 
 Inferred: images come from a CDN with responsive `sizes`; the consent layer is CookieYes (`cky-*`).
 
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| #0 | 2d | 1440×1728 | 192% (taller than the viewport, by design) | yes (4/4 distinct frames across a stepped sweep) | distilled as pattern 01 — the pixel reveal, plus the parallax that the extra 20% of height exists for |
+
+What scrolls: `window`, natively — no smooth-scroll library anywhere. The reveal is one-shot on
+intersection; the parallax is the only continuously scroll-linked thing on the page.
+
 ## Best patterns
 
 | # | Pattern | Category | Distill score | Difficulty |

@@ -45,6 +45,16 @@ Confirmed:
 - Platform support detected but unused: View Transitions, scroll-driven animations, `@starting-style`.
 - Rendering-engine branches (`isApple`, `isCoreTextRendering`, `isFirefox`) adjust text-box trimming and padding per platform — an unusually careful detail.
 
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| #0 | 2d | 1440×900 | 9% | yes (6/6 distinct frames across a stepped sweep) | not distilled: a Rive state machine renders the panel typography. The interesting part is the state machine's authored content, which is not ours to take, and the runtime is a dependency rather than a technique. Its scroll response is the same ScrollTrigger progress that drives pattern 04. |
+
+What scrolls: `window`, smoothed by Lenis with GSAP ScrollTrigger and ScrollSmoother in the bundle.
+Scroll drives the pinned poster sequence (pattern 04) and the section reveals; the carousel is
+driven by a spring store, not by scroll.
+
 ## Best patterns
 
 | # | Pattern | Category | Distill score | Difficulty |

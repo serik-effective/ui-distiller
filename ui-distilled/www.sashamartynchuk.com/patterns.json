@@ -2,19 +2,33 @@
   "site": "https://www.sashamartynchuk.com/",
   "host": "www.sashamartynchuk.com",
   "analyzedAt": "2026-09-04",
-  "stats": { "pages": 2, "candidates": 7, "distilled": 5 },
+  "stats": {
+    "pages": 2,
+    "candidates": 8,
+    "distilled": 6
+  },
   "patterns": [
     {
       "slug": "01-cylindrical-page-fold",
       "number": "01",
       "name": "Cylindrical page fold",
-      "categories": ["scroll", "3d", "layout"],
+      "categories": [
+        "scroll",
+        "3d",
+        "layout"
+      ],
       "description": "Rows wrap over the bottom edge onto a cylinder — curving through an arc, then continuing along the tangent — while the vanishing point tracks the scroll.",
       "trigger": "scroll",
       "difficulty": "Medium",
       "fidelity": "high",
       "score": 4.8,
-      "scores": { "visual": 5, "originality": 5, "reusability": 4, "interest": 5, "difficulty": 4 },
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 4
+      },
       "source": "https://www.sashamartynchuk.com/",
       "needsNetwork": false
     },
@@ -22,13 +36,23 @@
       "slug": "02-focus-burst",
       "number": "02",
       "name": "Focus burst",
-      "categories": ["background", "motion", "layout"],
+      "categories": [
+        "background",
+        "motion",
+        "layout"
+      ],
       "description": "A full-screen light burst made only of gradients: conic rays under a radial mask, blurred and saturated glow layers, all composited with mix-blend-mode: screen.",
       "trigger": "ambient",
       "difficulty": "Easy",
       "fidelity": "high",
       "score": 4.5,
-      "scores": { "visual": 5, "originality": 4, "reusability": 5, "interest": 4, "difficulty": 2 },
+      "scores": {
+        "visual": 5,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 2
+      },
       "source": "https://www.sashamartynchuk.com/",
       "needsNetwork": false
     },
@@ -36,13 +60,23 @@
       "slug": "03-warped-display-type",
       "number": "03",
       "name": "Warped display type",
-      "categories": ["typography", "webgl", "canvas"],
+      "categories": [
+        "typography",
+        "webgl",
+        "canvas"
+      ],
       "description": "Canvas text as an alpha texture on a tall mesh, bent by a vertex shader that integrates a curvature profile down the glyph height rather than applying one rotation.",
       "trigger": "scroll / control",
       "difficulty": "Hard",
       "fidelity": "approximate",
       "score": 4.5,
-      "scores": { "visual": 5, "originality": 5, "reusability": 3, "interest": 5, "difficulty": 5 },
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 3,
+        "interest": 5,
+        "difficulty": 5
+      },
       "source": "https://www.sashamartynchuk.com/",
       "needsNetwork": false
     },
@@ -50,13 +84,23 @@
       "slug": "04-gpu-tier-probe",
       "number": "04",
       "name": "GPU tier probe",
-      "categories": ["loading", "responsive", "canvas"],
+      "categories": [
+        "loading",
+        "responsive",
+        "canvas"
+      ],
       "description": "A worker-side WebGL probe that refuses a context under a performance caveat, reads the unmasked renderer, and picks a quality tier before the heavy effects load.",
       "trigger": "page-load",
       "difficulty": "Medium",
       "fidelity": "high",
       "score": 4.1,
-      "scores": { "visual": 2, "originality": 5, "reusability": 5, "interest": 5, "difficulty": 3 },
+      "scores": {
+        "visual": 2,
+        "originality": 5,
+        "reusability": 5,
+        "interest": 5,
+        "difficulty": 3
+      },
       "source": "https://www.sashamartynchuk.com/",
       "needsNetwork": false
     },
@@ -64,13 +108,48 @@
       "slug": "05-elastic-pulse",
       "number": "05",
       "name": "Elastic pulse",
-      "categories": ["buttons", "microinteraction", "hover"],
+      "categories": [
+        "buttons",
+        "microinteraction",
+        "hover"
+      ],
       "description": "A hover squash measured in ems of the control's own type size, so a 12px pill and a 34px one deform by the same typographic amount before springing back.",
       "trigger": "hover",
       "difficulty": "Easy",
       "fidelity": "high",
       "score": 3.9,
-      "scores": { "visual": 3, "originality": 4, "reusability": 5, "interest": 4, "difficulty": 1 },
+      "scores": {
+        "visual": 3,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 1
+      },
+      "source": "https://www.sashamartynchuk.com/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "06-scroll-phased-node-graph",
+      "number": "06",
+      "name": "Scroll-phased node graph",
+      "categories": [
+        "scroll",
+        "canvas",
+        "motion",
+        "background"
+      ],
+      "description": "A full-screen canvas whose whole life is nine named windows on one scroll progress, with each node staggered inside its phase by its own hashed delay.",
+      "trigger": "scroll, pointer",
+      "difficulty": "Hard",
+      "fidelity": "high",
+      "score": 4.2,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 4
+      },
       "source": "https://www.sashamartynchuk.com/",
       "needsNetwork": false
     }

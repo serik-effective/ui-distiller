@@ -294,3 +294,73 @@ Practical notes learned the hard way:
 `Fidelity: approximate` — the idea and feel are reproduced by different means (shader replaced by CSS mask, physics approximated, timing estimated from screenshots).
 
 Say which, and in the approximate case name the gap in one sentence.
+
+## Scroll-scrubbed animation: sections as transport
+
+The pattern worth copying is not "animate on scroll" — it is **holding a playhead and letting the
+page position it**. One animation exists; the page addresses it.
+
+```js
+/* the animation's own keyframes decide the cuts, so adding a keyframe adds a
+   segment and no scroll code changes */
+const keys = track.keyframes;                       // [{ t: 0 }, { t: 0.28 }, …]
+for (let i = 0; i < keys.length - 1; i++) {
+  onSectionProgress(i, p => {
+    playhead(keys[i].t + (keys[i + 1].t - keys[i].t) * p);
+  });
+}
+
+/* a section's own progress, over ScrollTrigger's classic window:
+   start when its top reaches the bottom of the viewport, end when its bottom does */
+function sectionProgress(el) {
+  const r = el.getBoundingClientRect();
+  const start = Math.max(0, r.top + scrollY - innerHeight);   // clamp: a section that
+  const end = r.bottom + scrollY - innerHeight;               // starts above the fold
+  return Math.min(1, Math.max(0, (scrollY - start) / (end - start || 1)));
+}
+```
+
+Rules that keep it honest:
+
+- **Recompute from geometry every frame.** Never accumulate deltas: accumulation drifts, and
+  reversing has to be exact.
+- **Clamp the first stage's start to the document top**, or a full-height first section is already
+  "past" at scroll 0 and the animation starts mid-flight.
+- **Interpolate the way the baked data does.** Straight lerp between keys reads as robotic; a
+  Catmull-Rom through the key positions matches what an exported animation curve does. Offer both
+  in the demo, so the difference is visible rather than asserted.
+- **Apply ambient motion after the scrubbed pose**, never into it. A pointer parallax added to the
+  sampled camera cannot fight the scroll; one folded into the track can.
+- **Use a mixer as an evaluator.** With a baked clip: create the action, `play()` it, then `paused =
+  true` and weight 0, and drive `action.time` yourself. You get keyframe interpolation for free
+  without the animation ever running on its own clock.
+- Under `prefers-reduced-motion`, a scrubbed track can stay — it only moves when the reader scrolls.
+  What goes is the ambient part: idle loops, pointer parallax, drift.
+
+## Cel shading that reads as a drawing
+
+Four small pieces, each independently useful:
+
+```glsl
+/* 1 — two steps, no gradient */
+float d = max(dot(normalize(vNormal), normalize(uLight)), 0.0);
+d = smoothstep(uThreshold, uThreshold + uSmoothness, d);
+vec3 color = mix(shadowColor, baseColor, d);
+
+/* 2 — break the terminator with a mask, or it reads as computer graphics */
+float mask = smoothstep(uSprayRamp.x, uSprayRamp.y, voronoi(vUv * uSprayScale));
+float edge = 1.0 - smoothstep(0.0, 0.35, abs(d - 0.5) * 2.0);   // near the boundary only
+color = mix(color, shadowColor, mask * edge);
+
+/* 3 — grain, ramped by world height so it is not a flat film over everything */
+color = blendOverlay(color, vec3(noise), uNoiseIntensity * smoothstep(lo, hi, vWorld.y / uSize.y));
+
+/* 4 — a reveal window with a hand-cut edge */
+float radius = mix(0.0, uRadius + noise(vUv * 15.0) * 0.05, uReveal);
+float inside = smoothstep(radius, radius - uSmoothness, distance(vWorld, uHitPos));
+color = mix(color, altSurface, inside);
+```
+
+Outlines belong in geometry, not in a screen-space filter: drawing the edges as lines keeps them a
+constant weight and lets them read as drafted rather than detected. `gl.polygonOffset` keeps them
+from z-fighting the faces they belong to.

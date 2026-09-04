@@ -41,6 +41,16 @@ Confirmed from the page and its assets:
 - View Transitions API is available in the browser but not used; the site implements its own transition.
 - ~73KB of unminified, commented custom JavaScript inline in the document — the site's own engineering, not a template.
 
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| #0 | webgl2 | 430×306 | 10% | yes (5/6 distinct frames across a stepped sweep) | distilled as pattern 05 — the Three.js hero object, an orthographic scene re-parented between desktop and mobile containers on resize |
+
+What scrolls: `window`, smoothed by Lenis, with GSAP ScrollTrigger driving the section reveals
+(pattern 04) and the progress navigation (pattern 03). The overscroll footer (pattern 01) reads
+wheel deltas past the scroll limit rather than scroll position.
+
 ## Best patterns
 
 | # | Pattern | Category | Distill score | Difficulty |

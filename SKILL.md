@@ -80,6 +80,32 @@ It writes `inspect.json`: live library and framework fingerprints, platform CSS 
 
 Use both when both are available. Never stop at the server HTML: most interesting behaviour exists only after hydration, and only under interaction.
 
+### Census before judgement
+
+Before anything is ranked, write down three things. They decide where the site's real work is, and skipping them is how a run ends up distilling the trim while missing the engine.
+
+1. **Every `<canvas>`** — its context (`webgl2` / `webgl` / `2d`), its backing size, and the share of the viewport it covers. `inspect.mjs` reports this as `canvases`. A canvas covering more than about a quarter of the screen is a headline candidate by default. It is never "just decoration" until you have driven it and can say what it does.
+2. **What actually scrolls.** Smooth-scroll libraries move scrolling off `window` onto a wrapper with `overflow: auto`, or replace it with a transform on a content element. `inspect.mjs` reports this as `scrollContainer`. Sweeping the wrong one reports a page that never moves.
+3. **The animation stack.** GSAP (and whether ScrollTrigger is present), Lenis / Locomotive, Three.js, an `AnimationMixer`, Theatre.js, Rive, Lottie, `ScrollTimeline`. Each of these implies a different place to look: a timeline library means there is a timeline somewhere to find, and a mixer or a sequencer means there is a baked animation being addressed rather than played.
+
+### Scroll must be stepped, never jumped
+
+Setting `scrollTop` (or calling `scrollTo`) once, then screenshotting, is not scrolling. The DOM's own scroll listeners fire, so classes flip, text changes and the page *looks* like it moved — while anything driven through a smoothed proxy (Lenis, ScrollTrigger with `scrub`, a sequencer playhead, a `requestAnimationFrame` lerp) stays exactly where it was, because it needs frames it never got.
+
+Always step:
+
+```js
+const el = document.querySelector('.lenis') || null;   // the real scroll container
+const from = el ? el.scrollTop : scrollY;
+for (let i = 1; i <= 24; i++) {
+  const v = from + (target - from) * (i / 24);
+  el ? (el.scrollTop = v) : scrollTo(0, v);
+  await new Promise(r => requestAnimationFrame(r));
+}
+```
+
+`inspect.mjs --scroll N` now does exactly this, on the container it detected, and fingerprints each large canvas at every sample so a scroll-driven render announces itself in the summary instead of having to be noticed.
+
 Full recipe list: `references/acquire.md`. Per-harness tool names and fallbacks: `references/harnesses.md`.
 
 ## Stage 2 — Explore
@@ -121,6 +147,15 @@ distill score = (2·visual + 2·originality + 1.5·reusability + 1·interest) / 
 Difficulty informs planning, never the score. Ties break toward the more reusable pattern. Full rubric with worked calibration: `references/scoring.md`.
 
 Keep roughly 5–12 patterns, but let the site decide. Three genuinely good ones beat ten mediocre ones. Never pad the count.
+
+**The signature pattern is not optional.** Most sites that are worth distilling are built around one effect — the thing the whole page exists to carry. Usually it is the largest, most technically loaded thing on the screen: a scroll-driven sequence, a canvas or WebGL scene, a physics or shader piece. It must appear in the output, or the report must state plainly why it could not be reached, with the evidence.
+
+Two failure modes to check yourself against before finalising a ranking:
+
+- **Difficulty masquerading as absence.** An effect that resisted capture is not an effect that is not there. "The canvas never rendered for me" is a note about your tooling, not a finding about the site. Change tools — a different browser, a headless run, a stepped scroll, `gl.readPixels`, the shader source in the JS chunks — and only then write a verdict.
+- **Commonness masquerading as insignificance.** Scroll-driven animation is everywhere, and that is exactly why the good version of it is worth distilling. Do not skip a site's central scroll piece because the category is familiar; judge the specific mechanism. "Sections scrub segments of one baked camera track" and "a thing fades in on scroll" are both scroll animation, and only one of them is a pattern.
+
+If the top of the ranking is made of small, safe details while the biggest thing on the page is missing, the ranking is wrong.
 
 Tag each with one or more categories:
 
@@ -177,6 +212,8 @@ Set fidelity honestly in each README: `Fidelity: high` when the mechanism is con
 Per pattern, `README.md` follows the template in `references/templates.md`: name, source URL, what is interesting, behavior, trigger, implementation in the original, distilled implementation, key techniques, parameters worth tuning, fidelity, difficulty, tags.
 
 At the root, `REPORT.md` follows the same file: design language, motion language, interaction philosophy, technology observations, ranked pattern table, per-pattern summaries, and "what makes this site special" (5–10 sharp points, not marketing).
+
+`REPORT.md` must also carry a **Canvas and scroll census** section: every canvas found, its context and coverage, and one line saying what it does and where it ended up (distilled as pattern NN, rejected with a score, or unreachable with evidence); plus what the page actually scrolls and how the scroll drives it. An unexplained canvas in that table is an admission that the run is not finished.
 
 ## Stage 7 — Gallery
 

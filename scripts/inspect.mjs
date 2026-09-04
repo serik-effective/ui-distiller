@@ -274,6 +274,88 @@ const PROBE_SCROLL_SAMPLE = (props) => {
   return { y: Math.round(scrollY), items: out };
 };
 
+/** Which element actually scrolls.
+ *  Smooth-scroll libraries (Lenis, Locomotive, Scrollbar…) frequently move the
+ *  scrolling off `window` onto a wrapper with `overflow: auto`, or replace it
+ *  with a transform on a content element. Sweeping `window` on such a site
+ *  reports a page that never moves. */
+const PROBE_SCROLL_TARGET = () => {
+  const vh = innerHeight;
+  const docScrolls = document.documentElement.scrollHeight > vh + 40 &&
+                     getComputedStyle(document.body).overflow !== 'hidden';
+  const candidates = [];
+  for (const el of document.querySelectorAll('div, main, section, [data-scroll-container]')) {
+    const cs = getComputedStyle(el);
+    const oy = cs.overflowY;
+    if (oy !== 'auto' && oy !== 'scroll') continue;
+    if (el.scrollHeight <= el.clientHeight + 40 || el.clientHeight < vh * 0.6) continue;
+    candidates.push({
+      sel: el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' && el.className.trim()
+            ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''),
+      scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
+    });
+  }
+  candidates.sort((a, b) => b.scrollHeight - a.scrollHeight);
+  return {
+    kind: docScrolls ? 'window' : (candidates[0] ? 'element' : 'window'),
+    element: candidates[0] || null,
+    others: candidates.slice(1, 4),
+    documentScrollHeight: document.documentElement.scrollHeight,
+    bodyOverflow: getComputedStyle(document.body).overflow,
+    htmlClass: document.documentElement.className.slice(0, 120),
+  };
+};
+
+/** Every canvas on the page, with the context it holds and how much of the
+ *  viewport it covers. A canvas that covers a large share of the screen is a
+ *  headline candidate by default — it is never "just decoration" until proven. */
+const PROBE_CANVAS_CENSUS = () => {
+  const vp = innerWidth * innerHeight;
+  return [...document.querySelectorAll('canvas')].map((c, i) => {
+    let ctx = 'unknown';
+    for (const k of ['webgl2', 'webgl', '2d', 'bitmaprenderer']) {
+      try { if (c.getContext(k, { failIfMajorPerformanceCaveat: false })) { ctx = k; break; } } catch { /* taken */ }
+    }
+    const r = c.getBoundingClientRect();
+    c.setAttribute('data-uid-canvas', String(i));
+    return {
+      index: i, ctx, backing: [c.width, c.height],
+      css: [Math.round(r.width), Math.round(r.height)],
+      box: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
+      coverage: +((r.width * r.height) / (vp || 1)).toFixed(3),
+      opacity: getComputedStyle(c).opacity,
+      display: getComputedStyle(c).display,
+    };
+  });
+};
+
+/** Where the marked canvases are right now — they move with the page. */
+const PROBE_CANVAS_BOXES = (indices) => indices.map(i => {
+  const c = document.querySelector(`canvas[data-uid-canvas="${i}"]`);
+  if (!c) return null;
+  const r = c.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return null;
+  return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+});
+
+/** Step the scroll across animation frames rather than jumping.
+ *  A single assignment fires the DOM's own scroll listeners — so text, classes
+ *  and triggers all move and the page LOOKS scrolled — while anything scrubbed
+ *  through a smoothed proxy (Lenis, GSAP ScrollTrigger with scrub, a Theatre
+ *  playhead) stays exactly where it was. Stepping is what makes those move. */
+const PROBE_STEP_SCROLL = async (target, steps, selector) => {
+  const el = selector ? document.querySelector(selector) : null;
+  const read = () => (el ? el.scrollTop : (window.scrollY || document.documentElement.scrollTop));
+  const write = v => { if (el) el.scrollTop = v; else window.scrollTo(0, v); };
+  const from = read();
+  for (let i = 1; i <= steps; i++) {
+    write(from + (target - from) * (i / steps));
+    await new Promise(r => requestAnimationFrame(r));
+  }
+  await new Promise(r => requestAnimationFrame(r));
+  return read();
+};
+
 const PROBE_MARK_SCROLL = (limit) => {
   const cn = e => String(e.className && e.className.baseVal !== undefined ? e.className.baseVal : e.className || '');
   const cands = [...document.querySelectorAll('section, [class*="hero" i], [class*="section" i], canvas, img, h1, h2, [class*="parallax" i], [class*="sticky" i]')];
@@ -398,6 +480,19 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
  *  page-side functions above readable instead of inlined as template soup. */
 const ev = (page, fn, ...args) =>
   page.evaluate(`(${fn.toString()})(${args.map(a => JSON.stringify(a)).join(',')})`);
+
+/** the same, for page-side functions that return a promise (stepped scrolling
+ *  waits on animation frames, so it has to be awaited inside the page) */
+const evAsync = (page, fn, ...args) =>
+  page.evaluate(`(async () => await (${fn.toString()})(${args.map(a => JSON.stringify(a)).join(',')}))()`);
+
+/** FNV-1a over the bytes of a screenshot — enough to answer "is this the same
+ *  frame as the last one", which is all the canvas sweep asks. */
+function hashBytes(buf) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < buf.length; i += 7) { h ^= buf[i]; h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16);
+}
 
 function diffSnapshots(a, b) {
   if (!a || !b) return null;
@@ -539,22 +634,70 @@ async function main() {
     }
   }
 
-  /* ---- scroll sweep: what moves, and how far ---- */
+  /* ---- canvas census: what is being rendered, and how big ---- */
+  result.canvases = await ev(page, PROBE_CANVAS_CENSUS);
+
+  /* ---- which element actually scrolls ---- */
+  result.scrollContainer = await ev(page, PROBE_SCROLL_TARGET);
+
+  /* ---- scroll sweep: what moves, and how far ----
+     The scroll is STEPPED across animation frames, never jumped. A jump fires
+     the DOM's scroll listeners, so section text and classes change and the page
+     looks scrolled, while anything scrubbed through a smoothed proxy stays
+     parked — which is exactly how a site's headline scroll animation gets
+     missed. Canvases are fingerprinted per sample so a scroll-driven render
+     announces itself instead of having to be noticed. */
   if (scrollSamples > 0) {
     result.scrollWatched = await ev(page, PROBE_MARK_SCROLL, 12);
 
-    const height = result.static.scrollHeight;
+    const container = result.scrollContainer;
+    const containerSel = container.kind === 'element' && container.element ? container.element.sel : null;
+    const height = containerSel ? container.element.scrollHeight : result.static.scrollHeight;
+    const canvasBoxes = (result.canvases || []).filter(c => c.coverage > 0.05).slice(0, 3);
+    const canvasHashes = canvasBoxes.map(() => []);
+
     const samples = [];
     for (let i = 0; i < scrollSamples; i++) {
       const y = Math.round((height - vh) * (i / Math.max(1, scrollSamples - 1)));
-      await page.evaluate(`scrollTo(0, ${y})`);
-      await sleep(420);
+      await evAsync(page, PROBE_STEP_SCROLL, y, 24, containerSel);
+      await sleep(320);
       samples.push(await ev(page, PROBE_SCROLL_SAMPLE, ['transform', 'opacity', 'clip-path', 'filter']));
+
+      /* a clipped screenshot is the only reliable read of a WebGL canvas from
+         outside the page: its drawing buffer is usually not preserved. The box
+         is re-read at every sample, because a canvas that scrolls with the page
+         is somewhere else by now — and a canvas that is off-screen at this
+         sample simply does not contribute a frame. */
+      const boxesNow = await ev(page, PROBE_CANVAS_BOXES, canvasBoxes.map(c => c.index));
+      for (let c = 0; c < canvasBoxes.length; c++) {
+        const b = boxesNow[c];
+        if (!b) { canvasHashes[c].push(null); continue; }
+        const x = Math.max(0, Math.min(b.x, vw - 1)), y = Math.max(0, Math.min(b.y, vh - 1));
+        const clip = { x, y,
+                       width: Math.min(vw - x, b.w - (x - b.x)), height: Math.min(vh - y, b.h - (y - b.y)) };
+        if (clip.width < 8 || clip.height < 8) { canvasHashes[c].push(null); continue; }
+        try {
+          const buf = await page.screenshot({ clip, type: 'png' });
+          canvasHashes[c].push(hashBytes(buf));
+        } catch { canvasHashes[c].push(null); }
+      }
+
       if (wantShots && i % 2 === 0) {
         await page.screenshot({ path: join(outDir, 'shots', `scroll-${String(i).padStart(2, '0')}.png`) });
       }
     }
     result.scroll = samples;
+
+    /* did the render actually change as the page scrolled? */
+    result.canvasScroll = canvasBoxes.map((c, i) => {
+      const hashes = canvasHashes[i].filter(Boolean);
+      const distinct = new Set(hashes).size;
+      return {
+        index: c.index, ctx: c.ctx, coverage: c.coverage,
+        distinctFrames: distinct, samples: hashes.length,
+        scrollDriven: distinct > Math.max(2, Math.round(hashes.length * 0.4)),
+      };
+    });
 
     /* which of the watched elements actually changed across the sweep */
     const moved = {};
@@ -571,7 +714,8 @@ async function main() {
       .sort((a, b) => b.distinctStates - a.distinctStates);
   }
 
-  await page.evaluate('scrollTo(0, 0)');
+  await evAsync(page, PROBE_STEP_SCROLL, 0, 12,
+                result.scrollContainer?.kind === 'element' ? result.scrollContainer.element.sel : null);
   await sleep(300);
   result.animationsAfterScroll = await page.evaluate('document.getAnimations().length');
   result.network = network.slice(0, 120);
@@ -593,6 +737,24 @@ async function main() {
     (result.hoverSkipped?.length ? `, ${result.hoverSkipped.length} unreachable` : '') +
     (result.hover?.length ? ` (top: ${result.hover.slice(0, 3).map(h => h.el + ' ×' + h.changeCount).join(', ')})` : '') + '\n' +
     `scroll movers: ${result.scrollMovers?.length ?? 0}\n` +
+    `scroll container: ${result.scrollContainer?.kind === 'element'
+        ? result.scrollContainer.element.sel + ` (${result.scrollContainer.element.scrollHeight}px) — window scroll would report nothing`
+        : 'window'}\n` +
+    `canvases: ${(result.canvases || []).length}` +
+    ((result.canvases || []).length
+      ? ' — ' + result.canvases.map(c => `#${c.index} ${c.ctx} ${c.backing[0]}×${c.backing[1]} cover ${(c.coverage * 100).toFixed(0)}%`).join(', ')
+      : '') + '\n' +
+    ((result.canvasScroll || []).length
+      ? result.canvasScroll.map(c =>
+          `  canvas #${c.index}: ${c.distinctFrames}/${c.samples} distinct frames across the sweep — ` +
+          (c.scrollDriven
+            ? 'SCROLL-DRIVEN. This is a headline candidate; distil it or say why not.'
+            : (c.samples === 0
+                ? 'NO FRAMES CAPTURED — it was never on screen during the sweep. Scroll to it and look; this is not a verdict.'
+                : 'not scroll-driven in this sweep. Drive it by hand (pointer, click, a longer sweep) before concluding it is decoration.'))).join('\n') + '\n'
+      : '') +
+    ((result.canvases || []).some(c => c.coverage > 0.25) && !(result.canvasScroll || []).length
+      ? '  a large canvas was found but not sampled — rerun with --scroll 8 or more\n' : '') +
     `routes: ${result.routes?.all.length ?? 0} found` +
     (result.routes ? ` (${result.routes.beforeMenu} before opening menus, ${result.routes.afterMenu} after)` : '') +
     (result.routes?.all.length <= 1 ? ' — SUSPICIOUS on a client-routed site: check the menu, sitemap.xml and the route table in the JS chunks' : '') + '\n' +

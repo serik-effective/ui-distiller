@@ -87,6 +87,18 @@ Which motion principles repeat across the site: shared easing, entrance/exit asy
 
 How the site answers the user: does it acknowledge the pointer, reward scrolling, make navigation feel spatial, keep state during route changes, prefer restraint or spectacle.
 
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| #0 | webgl2 | 2160×1350 | 96% | yes | distilled as pattern 01 |
+
+What scrolls: `window` / `<selector>` (a smooth-scroll wrapper, height Npx), and what the scroll
+drives — a scrubbed timeline, a sequencer playhead, an rAF lerp, native scroll-linked animations.
+
+Every canvas gets a row and a verdict: distilled as pattern NN, rejected with its score, or
+unreachable with the evidence. A row saying "unknown" means the run is not finished.
+
 ## Technology observations
 
 Detected or probable: frameworks, animation libraries, smooth-scroll, WebGL, fonts, image pipeline. Separate confirmed evidence from inference.

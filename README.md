@@ -126,9 +126,9 @@ The agent works autonomously from there: crawl a few representative pages, exerc
 
 | Stage | What happens |
 |---|---|
-| 1 · Acquire | `probe.mjs` for HTML/CSS/JS, library fingerprints and a CSS feature census; `inspect.mjs` or the harness's browser tools for live behaviour |
+| 1 · Acquire | `probe.mjs` for HTML/CSS/JS, library fingerprints and a CSS feature census; `inspect.mjs` or the harness's browser tools for live behaviour. Then a census before judgement: every canvas with its context and viewport coverage, what element actually scrolls, and the animation stack |
 | 2 · Explore | 3–7 representative pages, swept through a fixed checklist of components and interaction states |
-| 3 · Detect & rank | Candidates scored 1–5 on visual impact, originality, reusability and implementation interest; `score = (2·V + 2·O + 1.5·R + 1·I) / 6.5`; everything ≥ 3.5 is kept |
+| 3 · Detect & rank | Candidates scored 1–5 on visual impact, originality, reusability and implementation interest; `score = (2·V + 2·O + 1.5·R + 1·I) / 6.5`; everything ≥ 3.5 is kept. The site's signature effect must be distilled or explicitly justified as unreachable |
 | 4 · Reverse engineer | Trigger, mechanism, timing, composition and the detail that makes it good — written down before any code |
 | 5 · Recreate | Clean-room rebuild from `assets/demo-template.html`, vanilla unless a library *is* the pattern |
 | 6 · Document | Per-pattern README and a site-level REPORT |
@@ -158,10 +158,14 @@ node scripts/content.mjs --out <root>/site/content.json [--count 8] [--seed 42]
 **`inspect.mjs`** — behavioural pass in headless Chromium. Live library and framework fingerprints, platform CSS support (`:has()`, `@starting-style`, `transition-behavior: allow-discrete`, scroll timelines, view transitions), running animations with timing, custom properties, cursor and fixed layers, canvases and their contexts — plus:
 
 - a **hover-diff sweep**: hovers each candidate element and reports exactly which computed properties changed, ranked by how much. On a real run this surfaced a card hover's `0.913/0.861` frame scale against its `1.0953/1.1614` image scale without being told to look for it.
-- a **scroll sweep**: which elements actually move, and through how many distinct states.
+- a **scroll sweep** that is **stepped across animation frames on the real scroll container**, not jumped. A single `scrollTop` assignment fires the DOM's scroll listeners — text and classes change, so the page looks scrolled — while every smoothed or scrubbed animation stays parked. Stepping is what makes them move.
+- a **canvas census**: each canvas with its context, backing size and share of the viewport, plus a per-sample fingerprint across the scroll sweep, so a scroll-driven render is reported as one instead of having to be noticed.
+- **scroll container detection**: Lenis, Locomotive and friends move scrolling onto an `overflow: auto` wrapper; sweeping `window` on such a site reports a page that never moves.
 - screenshots, network log, console errors.
 
 Consent overlays are hidden locally by default (they intercept every hover) — nothing is clicked, accepted or stored; `--keep-overlays` disables it.
+
+**Why the sweep works this way.** On one real run the first pass concluded a full-viewport WebGL canvas was decorative, because jumped scroll positions produced four identical renders while the section copy changed around them. The site's headline effect — a baked camera animation cut at its keyframes, one segment per section — was missed entirely and only found on a re-audit. The stepped sweep and the canvas census exist so that failure reports itself.
 
 **`compare.mjs`** — reference capture and comparison. `shoot` grabs a page state at a fixed viewport, optionally after running a snippet to reach that state, with `--clip` to isolate a component and `--hide` to drop consent walls. `diff` compares two PNGs and reports mean difference, RMSE, the share of pixels past a threshold and the worst 8×8 regions, and writes a diff image. Defaults to comparing **edges** rather than raw pixels, because a distilled demo uses placeholder imagery on purpose. This is what turns "recreated" into "measured against the original".
 

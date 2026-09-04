@@ -35,6 +35,19 @@ The material is the second half of the effect: a two-step diffuse with no gradie
 
 The interface presents itself as a drafting instrument: a ruled sheet, a coordinate readout, dimension lines, marker annotations. That framing does real work — because the grid is the reference, every state of the frame is expressible as a number of squares, and the site can move between "opened for reading", "opened for the nav" and "pushed aside for a drawer" without any of them being a special case. The decorative layer and the layout layer are the same layer.
 
+## Canvas and scroll census
+
+| Canvas | Context | Backing | Coverage | Scroll-driven | Verdict |
+|---|---|---|---|---|---|
+| #0 | webgl2 | 2160×1350 | 100% | yes (5/5 distinct frames across a stepped sweep) | distilled as patterns 01 and 02 |
+
+What scrolls: **not `window`**. `document.documentElement.scrollHeight` is 900px and `body` never
+scrolls; the page scrolls `div.lenis` (`overflow: hidden auto`, 35 295px). Scroll drives the WebGL
+camera through a per-section chain: section *i*'s ScrollTrigger (`scrub: true`, `top bottom` →
+`bottom bottom`) emits `scrollProgress:i`, which advances a paused GSAP tween of the Theatre.js
+sequence playhead between keyframes *i* and *i+1* of the baked `main_camera` animation. The same
+scroll positions choreograph the clip-path frame between its named states.
+
 ## Technology observations
 
 Confirmed:

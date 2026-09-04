@@ -32,7 +32,8 @@ const REQUIRED_README = ['## What is interesting', '## Behavior', '## Trigger', 
   '## Distilled implementation', '## Key techniques', '## Parameters worth tuning', '## Fidelity',
   '## Difficulty', '## Tags'];
 const REQUIRED_REPORT = ['## Design language', '## Motion language', '## Interaction philosophy',
-  '## Technology observations', '## Best patterns', '## Patterns', '## What makes this site special'];
+  '## Technology observations', '## Canvas and scroll census', '## Best patterns', '## Patterns',
+  '## What makes this site special'];
 
 /* ---------- root ---------- */
 for (const f of ['index.html', 'REPORT.md', 'patterns.json']) {
