@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drafting Table — technical copy</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    /* 01 · frame — the rem is viewport-relative above 1080px, as on the source */
+    --cell:12px; --left:97.8vw; --right:97.8vw; --top:50.2vh; --bottom:98vh;
+    --frame-dur:1800ms;
+    /* 02 · loader */
+    --loop:500ms; --split:1000ms; --wipe:2800ms;
+    /* 03 · annotations */
+    --char-dur:1200ms; --char-stagger:40ms; --line-dur:600ms; --line-dur-2:400ms; --tilt:-4deg;
+    /* 04 · readout */
+    --swap:200ms;
+
+    --ease:cubic-bezier(.62,.01,.21,1);
+    --grid-bg:#eadfc9; --grid-v:#d3c9b5; --grid-h:#e3d9c3;
+    --ink:#1e1c18; --body:#636363; --muted:#8b8b8b; --line-c:#5b5b5b;
+    --accent:#283f7d; --orange:#ec633d; --border:#424242; --panel:#fffbf3;
+    --label:#414141; --value:gray;
+  }
+  @media (min-width: 1080px) { :root { --cell:calc(0.833333vw); } }
+
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  html, body { margin:0; }
+  body { background:var(--grid-bg); color:var(--ink); overflow-x:hidden;
+         font:400 15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  img { display:block; max-width:100%; }
+  a { color:inherit; text-decoration:none; }
+
+  /* ── 01 · the frame: four fixed graph-paper panels, each clipped from one side ── */
+  .panel { position:fixed; top:0; left:0; width:100%; height:100dvh; z-index:30; pointer-events:none;
+           background-color:var(--grid-bg);
+           background-image:linear-gradient(90deg, var(--grid-v) 1px, transparent 0),
+                            linear-gradient(var(--grid-h) 1px, transparent 0);
+           background-size:var(--cell) var(--cell);
+           background-attachment:fixed;                    /* the whole trick is on this line */
+           transition:clip-path var(--frame-dur) var(--ease); }
+  body.is-scrubbing .panel { transition:none; }
+  .panel--left   { clip-path:inset(0 var(--left) 0 0); }
+  .panel--right  { clip-path:inset(0 0 0 var(--right)); }
+  .panel--top    { clip-path:inset(0 0 var(--top) 0); }
+  .panel--bottom { clip-path:inset(var(--bottom) 0 0 0); }
+
+  /* ── chrome ── */
+  .brandbar { position:fixed; top:calc(var(--cell) * 1.4); left:50%; transform:translateX(-50%); z-index:34;
+              display:flex; align-items:center; gap:26px; background:var(--panel); border:1px solid #e4dcc9;
+              border-radius:3px; padding:8px 10px 8px 14px; box-shadow:0 1px 0 rgba(0,0,0,.04); }
+  .brandbar b { font-size:15px; letter-spacing:-.02em; }
+  .brandbar nav { display:flex; gap:20px; font-size:13px; color:var(--body); }
+  .brandbar nav a:hover { color:var(--ink); }
+  .brandbar .cta { background:var(--orange); color:#fff; font-size:13px; padding:7px 14px; border-radius:2px; }
+
+  /* ── 04 · coordinate readout ── */
+  .coords { position:fixed; top:37px; left:32px; z-index:34; font-size:12px; line-height:1; pointer-events:none;
+            font-family:"Architect Pro","Bradley Hand","Segoe Print",ui-monospace,SFMono-Regular,Menlo,monospace;
+            font-variant-numeric:tabular-nums; display:grid; gap:5px;
+            color:var(--r-value,var(--value)); transition:color var(--swap) var(--ease); }
+  .coords span { color:var(--r-label,var(--label)); transition:color var(--swap) var(--ease); }
+  .coords.is-white, .coords.is-white span { --r-label:#fff; --r-value:#fff; }
+  .mail { position:fixed; top:42px; right:32px; z-index:34; font-size:14px; letter-spacing:.06em;
+          font-family:"Architect Pro","Bradley Hand","Segoe Print",cursive; color:var(--label);
+          transition:color var(--swap) var(--ease); }
+  .mail.is-white { color:#fff; }
+
+  /* ── 02 · loader ── */
+  .loader { position:fixed; inset:0; z-index:60; display:grid; place-items:center;
+            background-color:var(--grid-bg);
+            background-image:linear-gradient(90deg, var(--grid-v) 1px, transparent 0),
+                             linear-gradient(var(--grid-h) 1px, transparent 0);
+            background-size:var(--cell) var(--cell); background-attachment:fixed; }
+  .loader.done { opacity:0; pointer-events:none; transition:opacity .5s var(--ease); }
+  .quads { position:relative; width:min(40vmin,280px); aspect-ratio:1; }
+  .quad { position:absolute; width:50%; height:50%; display:grid; place-items:center;
+          transition:transform var(--split) var(--ease); }
+  .quad--tl { left:0; top:0 } .quad--tr { right:0; top:0 } .quad--bl { left:0; bottom:0 } .quad--br { right:0; bottom:0 }
+  body.is-split .quad--br { transform:translate(65%, 65%) }
+  body.is-split .quad--bl { transform:translate(-42%, 65%) }
+  body.is-split .quad--tr { transform:translate(65%, -46%) }
+  body.is-split .quad--tl { transform:translate(-42%, -46%) }
+  .icons { position:absolute; inset:0; clip-path:inset(0% 0%); transition:clip-path var(--wipe) cubic-bezier(.22,1,.36,1); }
+  body.is-wiped .icons { clip-path:inset(0% 100%); }
+  .loader svg { display:block; width:100%; height:100%; overflow:visible; }
+  .stroke { fill:none; stroke:var(--ink); stroke-width:1.5; vector-effect:non-scaling-stroke; }
+  .accent { stroke:var(--accent); }
+  .line  { animation:slide var(--loop) var(--ease) infinite alternate; }
+  .line.b { animation-name:slideFar; }
+  .l1b { animation-delay:100ms } .l2 { animation-delay:100ms } .l2b { animation-delay:200ms }
+  @keyframes slide    { to { transform:translateX(110%) } }
+  @keyframes slideFar { to { transform:translateX(130%) } }
+  .arrowUp   { animation:up var(--loop) var(--ease) infinite alternate; }
+  .arrowDown { animation:down var(--loop) var(--ease) infinite alternate; animation-delay:100ms; }
+  @keyframes up   { to { transform:translateY(-110%) } }
+  @keyframes down { from { transform:translateY(-100%) } to { transform:translateY(0) } }
+  .circleA { animation:grow24 var(--loop) var(--ease) infinite alternate; transform-origin:center }
+  .circleC { animation:pop var(--loop) var(--ease) infinite alternate; animation-delay:100ms; transform-origin:center }
+  @keyframes grow24 { to { transform:scale(2.4) } }
+  @keyframes pop    { from { transform:scale(0) } to { transform:scale(1) } }
+  .arc { animation:swing calc(var(--loop) * 4.8) var(--ease) infinite; transform-origin:center }
+  @keyframes swing { 0% { transform:rotate(-90deg) } 50% { transform:rotate(0) } 100% { transform:rotate(90deg) } }
+
+  /* ── page ── */
+  main { position:relative; z-index:10; }
+  .hero { min-height:100vh; display:grid; align-content:center;
+          /* the opening starts 28 cells down, so the hero clears it */
+          padding:calc(var(--cell) * 34) calc(var(--cell) * 14) calc(var(--cell) * 6); }
+  .headline { position:relative; display:block; width:max-content; max-width:100%; }
+  h1 { font-size:clamp(34px,5.4vw,76px); line-height:.98; letter-spacing:-.035em; font-weight:500; margin:0; max-width:13ch; }
+  h1 .soft { color:#9c9c9c; }
+  .sub { margin:26px 0 0; color:var(--body); max-width:48ch; }
+
+  /* ── 03 · hand annotations ── */
+  .note { position:absolute; z-index:12; pointer-events:none; white-space:nowrap;
+          font-family:"Architect Pro","Bradley Hand","Segoe Print","Comic Sans MS",cursive;
+          font-size:22px; line-height:.9; color:var(--muted);
+          transform:rotate(var(--tilt)); transform-origin:left center; }
+  .note .ch { display:inline-block; opacity:0; transition:opacity var(--char-dur) var(--ease); }
+  body.is-drawn .note .ch { opacity:1; }
+  .rule { display:block; width:100%; height:5px; overflow:visible; margin-top:2px; transform:scaleX(0); opacity:0;
+          transition:transform var(--line-dur) var(--ease), opacity var(--line-dur) var(--ease); }
+  .rule path { fill:none; stroke:var(--line-c); stroke-width:1.4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+  body.is-drawn .rule { transform:scaleX(1); opacity:1; }
+  .note[data-rule="left"]  .rule { transform-origin:left center; }
+  .note[data-rule="right"] .rule { transform-origin:center; transition-duration:var(--line-dur-2); }
+  .note--a { left:0; bottom:100%; margin-bottom:calc(var(--cell) * 1.2); }
+  .note--b { left:100%; top:62%; margin-left:calc(var(--cell) * 2); }
+  @media (max-width: 900px) { .note--a, .note--b { position:static; display:block; margin:12px 0 0; } }
+
+  /* sections */
+  section { padding:calc(var(--cell) * 8) calc(var(--cell) * 6); }
+  .kicker { font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); }
+  h2 { font-size:clamp(26px,3.4vw,44px); letter-spacing:-.03em; line-height:1.05; margin:10px 0 0; font-weight:500; max-width:18ch; }
+  .lede { color:var(--body); max-width:56ch; margin:18px 0 0; }
+  .plate { margin:calc(var(--cell) * 4) 0 0; background:var(--accent); color:#fff; padding:0; overflow:hidden;
+           border-radius:2px; position:relative; }
+  .plate img { width:100%; height:min(58vh,520px); object-fit:cover; mix-blend-mode:luminosity; opacity:.9; }
+  .plate figcaption { position:absolute; left:0; right:0; bottom:0; padding:14px 18px; font-size:13px;
+                      background:linear-gradient(transparent, rgba(0,0,0,.45)); }
+  .grid { display:grid; gap:calc(var(--cell) * 2); grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+          margin-top:calc(var(--cell) * 4); }
+  .card { border:1px solid #ded4bf; background:var(--panel); border-radius:2px; overflow:hidden; }
+  .card img { width:100%; aspect-ratio:4/3; object-fit:cover; }
+  .card .body { padding:14px 16px 18px; }
+  .card h3 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .card p { margin:8px 0 0; font-size:13px; color:var(--body); }
+  .swatches { display:flex; gap:6px; margin-top:12px; }
+  .swatches i { width:22px; height:22px; border-radius:2px; border:1px solid rgba(0,0,0,.12); }
+
+  footer { padding:calc(var(--cell) * 6) calc(var(--cell) * 6) calc(var(--cell) * 10); color:var(--body); font-size:13px;
+           display:flex; gap:18px; flex-wrap:wrap; justify-content:space-between; }
+  .notice { position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:40; font-size:11px;
+            color:var(--body); background:var(--panel); border:1px solid #e4dcc9; border-radius:2px; padding:5px 10px; }
+  .notice b { color:var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior:auto; }
+    .panel, .note .ch, .rule, .icons, .quad, .coords, .mail { transition-duration:1ms !important; }
+    .line, .arrowUp, .arrowDown, .circleA, .circleC, .arc { animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 01 · the frame -->
+<div class="panel panel--left"></div>
+<div class="panel panel--right"></div>
+<div class="panel panel--top"></div>
+<div class="panel panel--bottom"></div>
+
+<!-- 02 · loader -->
+<div class="loader" id="loader">
+  <div class="quads">
+    <div class="icons">
+      <div class="quad quad--tl"><svg viewBox="0 0 100 100" aria-hidden="true">
+        <g class="line"><line class="stroke" x1="8" y1="34" x2="52" y2="34"/></g>
+        <g class="line b l1b"><line class="stroke accent" x1="8" y1="46" x2="38" y2="46"/></g>
+        <g class="line l2"><line class="stroke" x1="8" y1="58" x2="52" y2="58"/></g>
+        <g class="line b l2b"><line class="stroke accent" x1="8" y1="70" x2="38" y2="70"/></g></svg></div>
+      <div class="quad quad--tr"><svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="stroke circleA" cx="50" cy="50" r="8"/>
+        <circle class="stroke accent circleC" cx="50" cy="50" r="20"/></svg></div>
+      <div class="quad quad--bl"><svg viewBox="0 0 100 100" aria-hidden="true">
+        <g class="arrowUp"><path class="stroke" d="M50 78 L50 30 M38 42 L50 30 L62 42"/></g>
+        <g class="arrowDown"><path class="stroke accent" d="M28 22 L28 62 M20 52 L28 62 L36 52"/></g></svg></div>
+      <div class="quad quad--br"><svg viewBox="0 0 100 100" aria-hidden="true">
+        <g class="arc"><path class="stroke" d="M20 70 A 34 34 0 0 1 80 70"/></g>
+        <circle class="stroke accent circleC" cx="50" cy="70" r="14"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- chrome -->
+<div class="brandbar">
+  <b id="brand">Drafting Table</b>
+  <nav><a href="#work">Work</a><a href="#system">System</a><a href="#notes">Notes</a></nav>
+  <a class="cta" href="#work">Open a sheet</a>
+</div>
+<div class="coords" id="coords" aria-hidden="true">
+  <div><span>X</span> <b id="cx">0.00</b></div>
+  <div><span>Y</span> <b id="cy">0.00</b></div>
+</div>
+<a class="mail" id="mailLink" href="#notes">HELLO@EXAMPLE.TEST</a>
+
+<main>
+  <section class="hero">
+    <div class="headline" id="headline">
+      <h1 id="h1">Drawing the thing <span class="soft">before building&nbsp;it.</span></h1>
+      <div class="note note--a" data-text="architectural" data-start="left" data-rule="left"></div>
+      <div class="note note--b" data-text="not software" data-start="right" data-rule="right"></div>
+    </div>
+    <p class="sub" id="heroSub">A technical copy composing four distilled patterns: a grid-quantised frame, a blueprint loader, hand-drawn callouts and a coordinate readout.</p>
+  </section>
+
+  <section id="work">
+    <span class="kicker">01 — Sheets</span>
+    <h2 id="workTitle">Everything is placed against the ruling.</h2>
+    <p class="lede" id="workLede">Scroll and the frame scrubs between two named states, exactly as the source does — the opening is never a fixed size, and never off the grid.</p>
+    <figure class="plate" data-tone="dark">
+      <img id="plate" src="https://picsum.photos/seed/drafting-plate/1600/900" alt="">
+      <figcaption id="plateCap">Placeholder image · picsum.photos</figcaption>
+    </figure>
+  </section>
+
+  <section id="system">
+    <span class="kicker">02 — System</span>
+    <h2>Four patterns, one sheet.</h2>
+    <p class="lede">Each card is a design-system note from an anonymised pack; the palette below it is that pack's own.</p>
+    <div class="grid" id="cards"></div>
+  </section>
+
+  <section id="notes">
+    <span class="kicker">03 — Notes</span>
+    <h2 id="notesTitle">The frame, the loader, the callouts, the readout.</h2>
+    <p class="lede" id="notesLede">The loader hands the page to the frame part-way through its own exit, the callouts are written onto the sheet rather than into the sentence, and the readout recolours itself against whatever passes behind it.</p>
+  </section>
+</main>
+
+<footer>
+  <span>Technical copy · placeholder content only · images <a href="https://picsum.photos" target="_blank" rel="noreferrer noopener">picsum.photos</a></span>
+  <span id="credit">placeholder copy</span>
+</footer>
+
+<div class="notice">technical copy · patterns <b>01–04</b> from the illoca.unseen.co distillation · no branding, copy or imagery from the source</div>
+
+<script>
+/* ═══ 01 · frame ═══════════════════════════════════════════════════════
+   Named states in grid cells, converted to inset percentages at run time,
+   and scrubbed between two of them by scroll — the source's own model. */
+const STATES = {
+  open:      { top: 28, left: 2, right: 2, bottom: 1.5 },
+  openToNav: { top: 6,  left: 2, right: 2, bottom: 1.5 },
+  closed:    null,           // 50 from every side
+};
+const root = document.documentElement;
+const cellPx = () => parseFloat(getComputedStyle(root).getPropertyValue('--cell')) || 12;
+const pctX = px => 100 - (px / Math.max(1, innerWidth)) * 100;
+const pctY = px => 100 - (px / Math.max(1, innerHeight)) * 100;
+
+function insetsFor(name) {
+  if (name === 'closed') return { left: 50, right: 50, top: 50, bottom: 50 };
+  const s = STATES[name], c = cellPx();
+  return { left: pctX(c * s.left), right: pctX(c * s.right), top: pctY(c * s.top), bottom: pctY(c * s.bottom) };
+}
+function writeFrame(i) {
+  root.style.setProperty('--left', i.left.toFixed(3) + 'vw');
+  root.style.setProperty('--right', i.right.toFixed(3) + 'vw');
+  root.style.setProperty('--top', i.top.toFixed(3) + 'vh');
+  root.style.setProperty('--bottom', i.bottom.toFixed(3) + 'vh');
+}
+function applyState(name) { document.body.classList.remove('is-scrubbing'); writeFrame(insetsFor(name)); }
+
+/* the scrub: 0 at the top of the page, 1 once the hero has passed */
+let frameRaf = 0;
+function scrubFrame() {
+  frameRaf = 0;
+  const span = Math.max(1, innerHeight * 0.9);
+  const p = Math.min(1, Math.max(0, scrollY / span));
+  const a = insetsFor('open'), b = insetsFor('openToNav');
+  const mix = (x, y) => x + (y - x) * p;
+  document.body.classList.add('is-scrubbing');
+  writeFrame({ left: mix(a.left, b.left), right: mix(a.right, b.right), top: mix(a.top, b.top), bottom: mix(a.bottom, b.bottom) });
+}
+/* cancel-and-rerequest: a frame that never arrives must not latch the loop */
+const requestFrame = () => { cancelAnimationFrame(frameRaf); frameRaf = requestAnimationFrame(scrubFrame); };
+
+/* ═══ 03 · annotations ═════════════════════════════════════════════════ */
+const SVG = 'http://www.w3.org/2000/svg';
+const NOTE_START = { left: 200, right: 1300 };
+const RULE_DELAY = 600;
+const msOf = name => {
+  const v = getComputedStyle(root).getPropertyValue(name).trim();
+  return v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000;
+};
+function rulePath(w, seed) {
+  const j = n => (Math.sin((seed + n) * 12.9898) * 43758.5453 % 1 + 1) % 1;
+  const y = 3 + j(1) * 0.6;
+  return `M 1 ${y.toFixed(2)} C ${(w * .28).toFixed(1)} ${(y - 1.6 - j(2)).toFixed(2)}, ` +
+         `${(w * .62).toFixed(1)} ${(y + 1.4 + j(3)).toFixed(2)}, ${(w - 1).toFixed(1)} ${(y - .8).toFixed(2)}`;
+}
+function buildNotes() {
+  document.querySelectorAll('.note').forEach((note, ni) => {
+    note.textContent = '';
+    const holder = document.createElement('div');
+    [...note.dataset.text].forEach(c => {
+      const s = document.createElement('span');
+      s.className = 'ch'; s.textContent = c === ' ' ? ' ' : c;
+      holder.appendChild(s);
+    });
+    note.appendChild(holder);
+
+    const w = Math.max(40, holder.getBoundingClientRect().width);
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('class', 'rule');
+    svg.setAttribute('viewBox', `0 0 ${w.toFixed(0)} 5`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const p = document.createElementNS(SVG, 'path');
+    p.setAttribute('d', rulePath(w, ni + 1));
+    svg.appendChild(p); note.appendChild(svg);
+
+    const start = NOTE_START[note.dataset.start] || 200;
+    const stagger = msOf('--char-stagger');
+    [...note.querySelectorAll('.ch')].forEach((ch, i) => ch.style.transitionDelay = (start + i * stagger) + 'ms');
+    svg.style.transitionDelay = (start + RULE_DELAY - NOTE_START.left) + 'ms';
+  });
+}
+
+/* ═══ 04 · coordinate readout ══════════════════════════════════════════ */
+const coords = document.getElementById('coords'), mail = document.getElementById('mailLink');
+const cxOut = document.getElementById('cx'), cyOut = document.getElementById('cy');
+const fmt = n => n.toFixed(2).padStart(4, '0');
+function toneBehind() {
+  const r = coords.getBoundingClientRect();
+  const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  const owner = el && el.closest('[data-tone]');
+  return owner ? owner.dataset.tone : 'light';
+}
+addEventListener('pointermove', e => {
+  cxOut.textContent = fmt(e.clientX);
+  cyOut.textContent = fmt(e.clientY);
+  const dark = toneBehind() === 'dark';
+  coords.classList.toggle('is-white', dark);
+  mail.classList.toggle('is-white', dark);
+}, { passive: true });
+
+/* ═══ 02 · loader, and the handover ════════════════════════════════════
+   Timers only, and a hard safety timeout: nothing here may leave the page
+   covered if a step is missed. */
+const loader = document.getElementById('loader');
+const timers = [];
+function boot() {
+  applyState('closed');
+  timers.push(setTimeout(() => document.body.classList.add('is-split'), 600));
+  timers.push(setTimeout(() => document.body.classList.add('is-wiped'), 1100));
+  /* the handover: the frame opens while the sketch is still leaving */
+  timers.push(setTimeout(() => { applyState('open'); document.body.classList.add('is-drawn'); }, 1700));
+  timers.push(setTimeout(() => loader.classList.add('done'), 2600));
+}
+/* safety net: whatever happened above, the page is usable after 6s */
+setTimeout(() => {
+  loader.classList.add('done');
+  document.body.classList.add('is-drawn');
+  if (!root.style.getPropertyValue('--top')) applyState('open');
+}, 6000);
+
+/* ═══ content ══════════════════════════════════════════════════════════
+   Copy comes from an anonymised design-md pack. The pack's own entry names
+   belong in the credit line only — the page never presents them as clients. */
+const FALLBACK = [
+  { label: 'Sheet One', kind: 'Colors', blurb: 'Ink on warm paper, one navy accent, and a single orange reserved for the call to action.', palette: ['#283f7d', '#ec633d', '#eadfc9'] },
+  { label: 'Sheet Two', kind: 'Type', blurb: 'Four faces with four jobs: UI text, display, data, and a marker face for anything written by hand.', palette: ['#1e1c18', '#636363', '#d3c9b5'] },
+  { label: 'Sheet Three', kind: 'Layout', blurb: 'Every offset is a whole number of cells, so the frame always lands on the ruling.', palette: ['#414141', '#9aa0a6', '#fffbf3'] },
+];
+
+function renderCards(items) {
+  document.getElementById('cards').innerHTML = items.map((it, i) => `
+    <article class="card">
+      <img src="https://picsum.photos/seed/sheet-${i + 1}/800/600" alt="" loading="lazy">
+      <div class="body">
+        <h3>${it.label}</h3>
+        <p>${it.blurb}</p>
+        <div class="swatches">${(it.palette || []).slice(0, 4).map(c => `<i style="background:${c}"></i>`).join('')}</div>
+      </div>
+    </article>`).join('');
+}
+
+renderCards(FALLBACK);
+fetch('content.json').then(r => (r.ok ? r.json() : null)).then(pack => {
+  if (!pack || !pack.items || !pack.items.length) return;
+  renderCards(pack.items.slice(0, 6));
+  const first = pack.items[0];
+  if (first.blurb) document.getElementById('workLede').textContent = first.blurb;
+  const names = pack.items.map(i => i.name).filter(Boolean).slice(0, 6).join(', ');
+  document.getElementById('credit').textContent =
+    'copy adapted from anonymised design-md packs (MIT) — source entries: ' + names;
+}).catch(() => {});
+
+/* boot */
+buildNotes();
+boot();
+addEventListener('scroll', requestFrame, { passive: true });
+addEventListener('resize', () => { buildNotes(); requestFrame(); });
+
+window.COPY = { STATES, insetsFor, applyState, scrubFrame, buildNotes, toneBehind };
+</script>
+</body>
+</html>

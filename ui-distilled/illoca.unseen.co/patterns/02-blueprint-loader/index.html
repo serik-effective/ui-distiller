@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blueprint loader — UI Distiller</title>
+<style>
+  :root {
+    --cell:16px; --grid-bg:#eadfc9; --grid-v:#d3c9b5; --grid-h:#e3d9c3;
+    --ink:#1e1c18; --accent:#1f43d8;
+    --loop:500ms;        /* one cycle of the looping drawing            */
+    --stagger:100ms;     /* between the three line pairs                */
+    --split:1000ms;      /* the four quadrants separating              */
+    --wipe:2800ms;       /* the clip-path wipe over the icon group      */
+    --handoff:1100ms;    /* when the frame is told to open              */
+    --ease:cubic-bezier(.62,.01,.21,1);
+
+    --muted:#7a7264; --line:#cfc4ab; --panel:#fffdf7;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--grid-bg); color:var(--ink); overflow:hidden;
+         font:400 13px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+         background-image:linear-gradient(90deg,var(--grid-v) 1px,transparent 0),linear-gradient(var(--grid-h) 1px,transparent 0);
+         background-size:var(--cell) var(--cell); background-attachment:fixed; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; gap:12px; align-items:baseline; padding:10px 16px;
+           font-size:11px; color:var(--muted); }
+  header b { color:var(--ink); font-size:12px; font-weight:600; }
+
+  .stage { position:fixed; inset:0; display:grid; place-items:center; }
+
+  /* the four quadrants that separate on load */
+  .quads { position:relative; width:min(46vmin,320px); aspect-ratio:1; }
+  .quad { position:absolute; width:50%; height:50%; display:grid; place-items:center;
+          transition:transform var(--split) var(--ease); }
+  .quad--tl { left:0; top:0; }  .quad--tr { right:0; top:0; }
+  .quad--bl { left:0; bottom:0; } .quad--br { right:0; bottom:0; }
+  .is-split .quad--br { transform:translate(65%, 65%); }
+  .is-split .quad--bl { transform:translate(-42%, 65%); }
+  .is-split .quad--tr { transform:translate(65%, -46%); }
+  .is-split .quad--tl { transform:translate(-42%, -46%); }
+
+  /* the icon group, wiped away by a clip-path once the split starts */
+  .icons { position:absolute; inset:0; clip-path:inset(0% 0%); transition:clip-path var(--wipe) cubic-bezier(.22,1,.36,1); }
+  .is-wiped .icons { clip-path:inset(0% 100%); }
+
+  svg { display:block; width:100%; height:100%; overflow:visible; }
+  .stroke { fill:none; stroke:var(--ink); stroke-width:1.5; vector-effect:non-scaling-stroke; }
+  .accent { stroke:var(--accent); }
+  .clipbox { overflow:hidden; }
+
+  /* the looping drawing itself */
+  .line { animation:slide var(--loop) var(--ease) infinite alternate; }
+  .line.b { animation-name:slideFar; }
+  .l1 { animation-delay:0ms }   .l1b { animation-delay:100ms }
+  .l2 { animation-delay:100ms } .l2b { animation-delay:200ms }
+  .l3 { animation-delay:200ms } .l3b { animation-delay:300ms }
+  @keyframes slide    { to { transform:translateX(110%) } }
+  @keyframes slideFar { to { transform:translateX(130%) } }
+
+  .arrowUp   { animation:up var(--loop) var(--ease) infinite alternate; }
+  .arrowDown { animation:down var(--loop) var(--ease) infinite alternate; animation-delay:100ms; }
+  @keyframes up   { to { transform:translateY(-110%) } }
+  @keyframes down { from { transform:translateY(-100%) } to { transform:translateY(0) } }
+
+  .circleA { animation:grow24 var(--loop) var(--ease) infinite alternate; transform-origin:center; }
+  .circleB { animation:grow34 var(--loop) var(--ease) infinite alternate; transform-origin:center; }
+  .circleC, .circleD { animation:pop var(--loop) var(--ease) infinite alternate; animation-delay:100ms; transform-origin:center; }
+  @keyframes grow24 { to { transform:scale(2.4) } }
+  @keyframes grow34 { to { transform:scale(3.4) } }
+  @keyframes pop    { from { transform:scale(0) } to { transform:scale(1) } }
+
+  .arc { animation:swing calc(var(--loop) * 4.8) var(--ease) infinite; transform-origin:center; }
+  @keyframes swing { 0% { transform:rotate(-90deg) } 50% { transform:rotate(0deg) } 100% { transform:rotate(90deg) } }
+
+  /* what the loader hands over to */
+  .revealed { position:fixed; inset:0; background:var(--accent); display:grid; place-items:center; z-index:-1; }
+  .revealed span { color:#fff; font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+  .cover { position:fixed; inset:0; z-index:5; background-color:var(--grid-bg);
+           background-image:linear-gradient(90deg,var(--grid-v) 1px,transparent 0),linear-gradient(var(--grid-h) 1px,transparent 0);
+           background-size:var(--cell) var(--cell); background-attachment:fixed;
+           clip-path:inset(0 0 0 0); transition:clip-path 1.8s var(--ease); }
+  .is-handed .cover { clip-path:inset(calc(var(--cell) * 6) calc(var(--cell) * 2)); }
+
+  .timeline { position:fixed; left:16px; bottom:48px; z-index:20; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+              font-size:11px; color:var(--muted); display:grid; gap:2px; }
+  .timeline b { color:var(--ink); font-weight:500; }
+  .timeline .done { color:var(--accent); }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:7px 16px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:90px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:48px; }
+  .btn { font:inherit; font-size:11px; background:var(--panel); color:var(--ink); border:1px solid var(--line);
+         border-radius:2px; padding:5px 11px; cursor:pointer; }
+  .btn:hover { border-color:var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header><b>Blueprint loader</b><span>loading · motion — a technical drawing that loops, then hands the page to the frame</span></header>
+
+<div class="revealed"><span>the page underneath</span></div>
+<div class="cover" id="cover"></div>
+
+<div class="stage">
+  <div class="quads" id="quads">
+    <div class="icons" id="icons">
+      <div class="quad quad--tl">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <g class="clipbox"><rect x="0" y="0" width="100" height="100" fill="none"/>
+            <g class="line l1"><line class="stroke" x1="8" y1="30" x2="52" y2="30"/></g>
+            <g class="line b l1b"><line class="stroke accent" x1="8" y1="42" x2="38" y2="42"/></g>
+            <g class="line l2"><line class="stroke" x1="8" y1="56" x2="52" y2="56"/></g>
+            <g class="line b l2b"><line class="stroke accent" x1="8" y1="68" x2="38" y2="68"/></g>
+          </g>
+        </svg>
+      </div>
+      <div class="quad quad--tr">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="stroke circleA" cx="50" cy="50" r="8"/>
+          <circle class="stroke accent circleC" cx="50" cy="50" r="20"/>
+        </svg>
+      </div>
+      <div class="quad quad--bl">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <g class="arrowUp"><path class="stroke" d="M50 78 L50 30 M38 42 L50 30 L62 42"/></g>
+          <g class="arrowDown"><path class="stroke accent" d="M28 22 L28 62 M20 52 L28 62 L36 52"/></g>
+        </svg>
+      </div>
+      <div class="quad quad--br">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <g class="arc"><path class="stroke" d="M20 70 A 34 34 0 0 1 80 70"/></g>
+          <circle class="stroke circleB" cx="50" cy="70" r="4"/>
+          <circle class="stroke accent circleD" cx="50" cy="70" r="14"/>
+          <g class="line l3"><line class="stroke" x1="14" y1="86" x2="52" y2="86"/></g>
+          <g class="line b l3b"><line class="stroke accent" x1="14" y1="94" x2="38" y2="94"/></g>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="timeline" id="tl">
+  <span id="t0">0ms — looping drawing</span>
+  <span id="t1">— quadrants separate</span>
+  <span id="t2">— icon group wipes</span>
+  <span id="t3">— frame told to open</span>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-loop">loop</label>
+    <input id="c-loop" type="range" min="150" max="1500" step="50" value="500" data-var="--loop" data-unit="ms"><output for="c-loop">500ms</output></div>
+  <div class="ctrl"><label for="c-split">split</label>
+    <input id="c-split" type="range" min="200" max="3000" step="100" value="1000" data-var="--split" data-unit="ms"><output for="c-split">1000ms</output></div>
+  <div class="ctrl"><label for="c-wipe">wipe</label>
+    <input id="c-wipe" type="range" min="400" max="5000" step="100" value="2800" data-var="--wipe" data-unit="ms"><output for="c-wipe">2800ms</output></div>
+  <div class="ctrl"><label for="c-handoff">handoff</label>
+    <input id="c-handoff" type="range" min="0" max="3000" step="100" value="1100"><output for="c-handoff">1100ms</output></div>
+  <button class="btn" id="replay">Replay</button>
+</div>
+
+<script>
+const CONFIG = { handoff: 1100 };
+const body = document.body;
+const stamps = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
+let timers = [];
+
+const ms = name => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+
+/* the sequence: the loop runs from the first frame, then on "load" the quadrants
+   separate, the icons wipe out, and part-way through the split the loader hands
+   the page to the frame — it does not wait to finish first. */
+function run() {
+  timers.forEach(clearTimeout);
+  timers = [];
+  body.classList.remove('is-split', 'is-wiped', 'is-handed');
+  stamps.forEach((el, i) => { el.className = ''; el.textContent = ['— quadrants separate', '— icon group wipes', '— frame told to open'][i]; });
+
+  timers.push(setTimeout(() => {
+    body.classList.add('is-split');
+    stamps[0].className = 'done';
+    stamps[0].textContent = `${Math.round(ms('--split'))}ms — quadrants separate`;
+  }, 600));
+
+  timers.push(setTimeout(() => {
+    body.classList.add('is-wiped');
+    stamps[1].className = 'done';
+    stamps[1].textContent = `+500ms — icon group wipes (${Math.round(ms('--wipe'))}ms)`;
+  }, 1100));
+
+  timers.push(setTimeout(() => {
+    body.classList.add('is-handed');
+    stamps[2].className = 'done';
+    stamps[2].textContent = `+${CONFIG.handoff}ms — frame told to open`;
+  }, 600 + CONFIG.handoff));
+}
+
+document.getElementById('replay').addEventListener('click', run);
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => { const v = input.value + (input.dataset.unit || ''); document.documentElement.style.setProperty(input.dataset.var, v); out.textContent = v; };
+  input.addEventListener('input', go); go();
+});
+const h = document.getElementById('c-handoff');
+const hApply = () => { CONFIG.handoff = Number(h.value); document.querySelector('output[for="c-handoff"]').textContent = h.value + 'ms'; };
+h.addEventListener('input', hApply); hApply();
+
+run();
+window.LOADER = { CONFIG, run };
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+{
+  "source": "https://github.com/voltagent/awesome-design-md (design-md, MIT)",
+  "license": "MIT",
+  "note": "Anonymised design-system interpretations. Placeholder copy only — not the work of any named company.",
+  "seed": 46091,
+  "items": [
+    {
+      "slug": "hp",
+      "name": "HP",
+      "label": "Cobalt Field",
+      "kind": "Colors",
+      "blurb": "Cards round at 8–16px, photos sit in soft 16px frames, and dark navy slabs anchor the customer-story and \"how can we help\" closing bands.",
+      "notes": [],
+      "palette": [
+        "#024ad8",
+        "#296ef9",
+        "#0e3191"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "airtable",
+      "name": "Airtable",
+      "label": "Ink Practice",
+      "kind": "Colors",
+      "blurb": "A sober, editorial workflow-software interface anchored on white canvas and dark-ink type, where brand voltage comes from full-bleed signature cards in coral, dark green, peach, and dark navy that punctuate long-scroll explainer pages.",
+      "notes": [],
+      "palette": [
+        "#181d26",
+        "#0d1218",
+        "#333840"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Signature Card Surfaces"
+      ]
+    },
+    {
+      "slug": "renault",
+      "name": "Renault",
+      "label": "Ember Studio",
+      "kind": "Colors",
+      "blurb": "The system reads as confident, photography-first automotive — large hero cars on neutral or atmospheric backdrops, square-edged or barely-rounded containers, and a small disciplined palette where every coloured element is intentional.",
+      "notes": [],
+      "palette": [
+        "#ffed00",
+        "#e6d200",
+        "#000000"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "shopify",
+      "name": "Shopifi",
+      "label": "Ink Press",
+      "kind": "Colors",
+      "blurb": "a cinematic commerce platform that runs two parallel design tracks.",
+      "notes": [],
+      "palette": [
+        "#000000",
+        "#ffffff",
+        "#0a0a0a"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Shade Ladder",
+        "Text"
+      ]
+    },
+    {
+      "slug": "figma",
+      "name": "Figma",
+      "label": "Ink Field",
+      "kind": "Colors",
+      "blurb": "\"A confident black-and-white editorial frame interrupted by oversized, hand-cut pastel color blocks.",
+      "notes": [
+        "The result is a design system that feels both technical and joyful — a tool for serious work, made by people who like color.\""
+      ],
+      "palette": [
+        "#000000",
+        "#ffffff",
+        "#e6e6e6"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "mongodb",
+      "name": "MongoDB",
+      "label": "Verdant Method",
+      "kind": "Colors",
+      "blurb": "The signature green pill button is unmistakable across product, pricing, learning, and AI use-case surfaces.",
+      "notes": [],
+      "palette": [
+        "#00ed64",
+        "#00b545",
+        "#008c34"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Category Accent (Course Tags)",
+        "Surface",
+        "Text"
+      ]
+    },
+    {
+      "slug": "framer",
+      "name": "Framer",
+      "label": "Chalk Atlas",
+      "kind": "Colors",
+      "blurb": "The page rhythm is broken by oversized vibrant gradient atmosphere panels — magenta, violet, orange spotlights — that act as living showcase tiles, not decoration.",
+      "notes": [],
+      "palette": [
+        "#ffffff",
+        "#000000",
+        "#0099ff"
+      ],
+      "font": null,
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Text",
+        "Semantic"
+      ]
+    },
+    {
+      "slug": "ferrari",
+      "name": "Ferrari",
+      "label": "Ember Field",
+      "kind": "Colors",
+      "blurb": "A luxury-automotive brand whose marketing surfaces read as cinematic editorial.",
+      "notes": [
+        "The brand's strongest visual signature is the **full-bleed cinematic hero photograph** that fills the viewport top with car photography, model details, or trackside livery — followed by a tighter editorial body layout below."
+      ],
+      "palette": [
+        "#da291c",
+        "#b01e0a",
+        "#9d2211"
+      ],
+      "font": "FerrariSans across every te",
+      "sections": [
+        "Overview",
+        "Colors",
+        "Brand & Accent",
+        "Surface",
+        "Hairlines",
+        "Text"
+      ]
+    }
+  ]
+}

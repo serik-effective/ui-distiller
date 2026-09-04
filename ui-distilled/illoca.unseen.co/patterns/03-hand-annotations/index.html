@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hand-annotation callouts — UI Distiller</title>
+<style>
+  :root {
+    --cell:16px;            /* the sheet grid the callouts are placed against */
+    --char-dur:1200ms;      /* per-character fade                             */
+    --char-stagger:40ms;    /* between characters                             */
+    --line-dur:600ms;       /* underline sweep (left annotation)              */
+    --line-dur-2:400ms;     /* underline sweep (right annotation)             */
+    --t-left:200ms;         /* when the left annotation starts                */
+    --t-line:600ms;         /* when its underline starts                      */
+    --t-right:1300ms;       /* when the right annotation starts               */
+    --tilt:-4deg;           /* how far a callout leans                        */
+    --ease:cubic-bezier(.62,.01,.21,1);
+
+    --grid-bg:#eadfc9; --grid-v:#d3c9b5; --grid-h:#e3d9c3;
+    --ink:#1e1c18; --muted:#7a7264; --accent:#283f7d;
+    --note:#8b8b8b; --note-line:#5b5b5b;
+    --line:#cfc4ab; --panel:#fffdf7;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; min-height:100%; }
+  body { background:var(--grid-bg); color:var(--ink); padding-bottom:56px;
+         font:400 15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+         background-image:linear-gradient(90deg,var(--grid-v) 1px,transparent 0),linear-gradient(var(--grid-h) 1px,transparent 0);
+         background-size:var(--cell) var(--cell); background-attachment:fixed; }
+
+  header { display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:14px; font-weight:600; margin:0; }
+  header .meta { font-size:12px; color:var(--muted); }
+
+  main { max-width:940px; margin:0 auto; padding:120px 24px 160px; }
+
+  /* ---------- the pattern ----------
+     The callout is not in the text flow. It is an absolutely positioned child
+     of the headline block, tilted a few degrees, and it carries its own
+     hand-drawn rule as an inline SVG. Nothing in the sentence reflows when a
+     callout is added, moved or removed. */
+  .annotated { position:relative; display:inline-block; }
+
+  h2 { font-size:clamp(38px,7vw,84px); line-height:.92; letter-spacing:-.035em; margin:0; font-weight:500; max-width:11ch; }
+  h2 em { font-style:normal; color:var(--accent); }
+  p.lead { color:var(--muted); max-width:46ch; margin:44px 0 0; }
+
+  .note {
+    position:absolute; z-index:2; pointer-events:none; white-space:nowrap;
+    font-family:"Architect Pro","Bradley Hand","Segoe Print","Comic Sans MS",cursive;
+    font-size:24px; line-height:.9; color:var(--note);
+    transform:rotate(var(--tilt)); transform-origin:left center;
+  }
+  /* the character split: each glyph is its own inline-block so it can carry
+     its own delay. Spaces keep their width via a non-collapsing span. */
+  .note .ch { display:inline-block; opacity:0; transition:opacity var(--char-dur) var(--ease); }
+  .is-drawn .note .ch { opacity:1; }
+
+  /* the rule under a callout is a drawn line, not a border: an SVG path with
+     a deliberate wobble, revealed by scaling it along X from its own origin —
+     which is why it reads as a stroke being pulled rather than a bar growing */
+  .rule { display:block; width:100%; height:5px; overflow:visible; margin-top:2px;
+          transform:scaleX(0); opacity:0;
+          transition:transform var(--line-dur) var(--ease), opacity var(--line-dur) var(--ease); }
+  .rule path { fill:none; stroke:var(--note-line); stroke-width:1.4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+  .is-drawn .rule { transform:scaleX(1); opacity:1; }
+  .note[data-rule="left"]  .rule { transform-origin:left center; }
+  .note[data-rule="right"] .rule { transform-origin:center center; transition-duration:var(--line-dur-2); }
+
+  /* placements: whole cells from the headline's own box */
+  .note--left  { left:0; top:calc(var(--cell) * 4); }
+  .note--right { left:100%; bottom:calc(var(--cell) * 2); margin-left:calc(var(--cell) * -4); }
+  .note--under { left:calc(var(--cell) * 2); top:100%; margin-top:calc(var(--cell) * 1.5); font-size:20px; }
+
+  /* the arrow. The original draws these with glyphs from a symbols font,
+     rotated by arbitrary amounts (rotate-210, -rotate-143) — the same idea
+     here with a path, because the font is not ours to ship. */
+  .arrow { position:absolute; left:calc(var(--cell) * -3); top:2px; width:40px; height:24px; overflow:visible;
+           transform:rotate(-17deg); opacity:0; transition:opacity 300ms var(--ease); }
+  .arrow path { fill:none; stroke:var(--note-line); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round;
+                vector-effect:non-scaling-stroke; }
+  .is-drawn .arrow { opacity:1; }
+
+  .grid-note { margin-top:150px; display:grid; gap:6px; color:var(--muted); font-size:12px;
+               font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .grid-note b { color:var(--ink); font-weight:500; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:9; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding:8px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:88px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:46px; }
+  .btn { font:inherit; font-size:12px; background:var(--panel); color:var(--ink); border:1px solid var(--line);
+         border-radius:2px; padding:5px 11px; cursor:pointer; }
+  .btn:hover { border-color:var(--ink); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  @media (max-width: 760px) {
+    .note--right { position:static; display:block; margin:16px 0 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .note .ch, .rule, .arrow { transition-duration:1ms !important; transition-delay:0ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Hand-annotation callouts</h1>
+  <span class="meta">typography · layout — trigger: page load, Replay</span>
+</header>
+
+<main>
+  <div class="annotated" id="anchor">
+    <h2>Drawing the thing before <em>building</em> it.</h2>
+
+    <div class="note note--left" data-text="architectural" data-start="left" data-rule="left"></div>
+    <div class="note note--right" data-text="not software" data-start="right" data-rule="right" data-arrow></div>
+    <div class="note note--under" data-text="offset in whole cells" data-start="right" data-rule="left"></div>
+  </div>
+
+  <p class="lead">Each callout is positioned against the sheet, not against the sentence. The characters fade in one at a time, and the rule beneath them is scaled along a single axis from its own end — the line is pulled, not grown.</p>
+
+  <div class="grid-note">
+    <span>characters: <b>stagger 40ms</b>, fade <b>1200ms</b>, starting at 200ms and 1300ms</span>
+    <span>rules: <b>scaleX 0 → 1</b> over 600ms from the left, 400ms from the centre</span>
+    <span>cell = <b id="cellOut">16px</b> · every offset is a whole multiple of it</span>
+  </div>
+</main>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-stagger">stagger</label>
+    <input id="c-stagger" type="range" min="0" max="200" step="5" value="40" data-var="--char-stagger" data-unit="ms"><output for="c-stagger">40ms</output></div>
+  <div class="ctrl"><label for="c-char">char fade</label>
+    <input id="c-char" type="range" min="100" max="3000" step="50" value="1200" data-var="--char-dur" data-unit="ms"><output for="c-char">1200ms</output></div>
+  <div class="ctrl"><label for="c-line">rule</label>
+    <input id="c-line" type="range" min="100" max="2000" step="50" value="600" data-var="--line-dur" data-unit="ms"><output for="c-line">600ms</output></div>
+  <div class="ctrl"><label for="c-tilt">tilt</label>
+    <input id="c-tilt" type="range" min="-12" max="12" step="0.5" value="-4" data-var="--tilt" data-unit="deg"><output for="c-tilt">-4deg</output></div>
+  <div class="ctrl"><label for="c-cell">cell</label>
+    <input id="c-cell" type="range" min="8" max="40" step="1" value="16" data-var="--cell" data-unit="px"><output for="c-cell">16px</output></div>
+  <button class="btn" id="replay">Replay</button>
+</div>
+
+<script>
+const SVG = 'http://www.w3.org/2000/svg';
+const CONFIG = { startLeft: 200, startRight: 1300, ruleDelay: 600 };
+
+const msOf = name => {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v.endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000;   // 's' and 'ms' both parse
+};
+
+/* A wobbly rule, generated for the width it has to cover. Two shallow curves
+   with different control points, so no two callouts get the same line. */
+function rulePath(w, seed) {
+  const j = (n) => (Math.sin((seed + n) * 12.9898) * 43758.5453 % 1 + 1) % 1;   // deterministic 0..1
+  const y = 3 + j(1) * 0.6;
+  return `M 1 ${y.toFixed(2)} C ${(w * 0.28).toFixed(1)} ${(y - 1.6 - j(2)).toFixed(2)}, ` +
+         `${(w * 0.62).toFixed(1)} ${(y + 1.4 + j(3)).toFixed(2)}, ${(w - 1).toFixed(1)} ${(y - 0.8).toFixed(2)}`;
+}
+
+function build() {
+  document.querySelectorAll('.note').forEach((note, ni) => {
+    note.textContent = '';
+
+    /* split into characters so each can carry its own delay — the same shape
+       as the original's char split, without the library */
+    const frag = document.createDocumentFragment();
+    [...note.dataset.text].forEach(c => {
+      const s = document.createElement('span');
+      s.className = 'ch';
+      s.textContent = c === ' ' ? ' ' : c;
+      frag.appendChild(s);
+    });
+    const holder = document.createElement('div');
+    holder.appendChild(frag);
+    note.appendChild(holder);
+
+    if (note.hasAttribute('data-arrow')) {          // valueless attribute → dataset is ''
+      const a = document.createElementNS(SVG, 'svg');
+      a.setAttribute('class', 'arrow');
+      a.setAttribute('viewBox', '0 0 40 24');
+      const p = document.createElementNS(SVG, 'path');
+      p.setAttribute('d', 'M 38 12 C 27 12, 20 5, 5 11 M 13 4 L 4 11 L 13 19');
+      a.appendChild(p);
+      note.appendChild(a);
+    }
+
+    /* the rule is measured against the text that was just laid out */
+    const w = Math.max(40, holder.getBoundingClientRect().width);
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('class', 'rule');
+    svg.setAttribute('viewBox', `0 0 ${w.toFixed(0)} 5`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const p = document.createElementNS(SVG, 'path');
+    p.setAttribute('d', rulePath(w, ni + 1));
+    svg.appendChild(p);
+    note.appendChild(svg);
+
+    /* delays: characters stagger from the note's own start, the rule waits */
+    const start = note.dataset.start === 'right' ? CONFIG.startRight : CONFIG.startLeft;
+    const stagger = msOf('--char-stagger');
+    [...note.querySelectorAll('.ch')].forEach((ch, i) => {
+      ch.style.transitionDelay = (start + i * stagger) + 'ms';
+    });
+    svg.style.transitionDelay = (start + CONFIG.ruleDelay - CONFIG.startLeft) + 'ms';
+    const arrow = note.querySelector('.arrow');
+    if (arrow) arrow.style.transitionDelay = (start + CONFIG.ruleDelay - CONFIG.startLeft) + 'ms';
+  });
+}
+
+function play() {
+  document.body.classList.remove('is-drawn');
+  build();
+  void document.body.offsetWidth;                     // commit the reset
+  /* a timer, not rAF: a tab that starts in the background must still draw */
+  setTimeout(() => document.body.classList.add('is-drawn'), 40);
+}
+
+document.getElementById('replay').addEventListener('click', play);
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => {
+    const v = input.value + (input.dataset.unit || '');
+    document.documentElement.style.setProperty(input.dataset.var, v);
+    out.textContent = v;
+    if (input.dataset.var === '--cell') { document.getElementById('cellOut').textContent = v; }
+    if (input.dataset.var === '--cell' || input.dataset.var === '--char-stagger') build();
+  };
+  input.addEventListener('input', go); go();
+});
+
+addEventListener('resize', build);
+play();
+window.NOTES = { CONFIG, play, build };
+</script>
+</body>
+</html>

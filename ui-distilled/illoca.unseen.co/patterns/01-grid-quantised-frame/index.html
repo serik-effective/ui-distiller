@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en" data-theme="paper">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid-quantised frame — UI Distiller</title>
+<style>
+  :root {
+    --cell: 16px;              /* one graph-paper square — the unit the frame is measured in */
+    --grid-bg: #eadfc9;
+    --grid-line-v: #d3c9b5;    /* the two axes are deliberately different weights */
+    --grid-line-h: #e3d9c3;
+    --hole-border: #3f3f3f;
+    --dur: 1.8s;
+    --ease: cubic-bezier(.62, .01, .21, 1);   /* stands in for the site's custom "joe" ease */
+
+    --fg:#1e1c18; --muted:#7a7264; --line:#cfc4ab; --accent:#1f43d8; --panel:#fffdf7;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:#0d0c0a; color:var(--fg); overflow:hidden;
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+
+  /* what the frame opens onto */
+  .content { position:fixed; inset:0; display:grid; place-items:center; background:#1f43d8; overflow:hidden; }
+  /* the page under the frame — drawn in CSS so the demo needs no network */
+  .content::before { content:""; position:absolute; inset:0;
+    background:
+      radial-gradient(120% 90% at 22% 18%, rgba(255,255,255,.34), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,.10) 0 2px, transparent 2px 34px),
+      linear-gradient(160deg, #2a54e6 0%, #1f43d8 46%, #14307f 100%); }
+  .content .caption { position:relative; z-index:2; color:#fff; font-size:12px; letter-spacing:.14em;
+                      text-transform:uppercase; mix-blend-mode:difference; }
+
+  /* ---------- the pattern ----------
+     Four fixed layers, each painted with the SAME fixed-attachment graph paper
+     and each clipped from one side. Because the background is attached to the
+     viewport rather than to the element, the grid never slides as the panels
+     move — the lines stay continuous across the opening at every frame. */
+  .hole { position:fixed; inset:0; pointer-events:none; z-index:5; }
+  .panel {
+    position:fixed; top:0; left:0; width:100%; height:100dvh;
+    background-color:var(--grid-bg);
+    background-image:
+      linear-gradient(90deg, var(--grid-line-v) 1px, transparent 0),
+      linear-gradient(var(--grid-line-h) 1px, transparent 0);
+    background-size:var(--cell) var(--cell);
+    background-attachment:fixed;               /* the whole trick is on this line */
+    background-position:0 0;
+    transform:translateZ(0);
+    transition:clip-path var(--dur) var(--ease);
+  }
+  .panel--left   { clip-path:inset(0 var(--left)  0 0); }
+  .panel--right  { clip-path:inset(0 0 0 var(--right)); }
+  .panel--top    { clip-path:inset(0 0 var(--top) 0); }
+  .panel--bottom { clip-path:inset(var(--bottom) 0 0 0); }
+  body.is-scrubbing .panel, body.is-scrubbing .edge { transition:none; }
+  .pick { font:inherit; font-size:11px; background:var(--panel); color:var(--ink); border:1px solid var(--line);
+          border-radius:2px; padding:3px 5px; }
+
+  .edge { position:fixed; z-index:6; pointer-events:none; box-shadow:0 0 0 1px var(--hole-border); opacity:.5;
+          transition:inset var(--dur) var(--ease), opacity .4s ease; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:20; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+           padding:10px 16px; font-size:11px; color:var(--muted); }
+  header b { color:var(--fg); font-size:12px; font-weight:600; }
+  header .spacer { flex:1; }
+
+  .states { position:fixed; inset:auto 0 44px 0; z-index:20; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .states button { font:inherit; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+                   background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:2px;
+                   padding:6px 12px; cursor:pointer; }
+  .states button:hover { border-color:var(--fg); }
+  .states button[aria-pressed="true"] { background:var(--fg); color:var(--grid-bg); border-color:var(--fg); }
+  .states button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .readout { position:fixed; left:16px; bottom:16px; z-index:20; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+             font-size:11px; color:var(--muted); display:grid; gap:2px; }
+  .readout b { color:var(--fg); font-weight:500; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:25; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:7px 16px; font-size:11px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:88px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .toggle { display:flex; align-items:center; gap:6px; color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .panel, .edge { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<div class="content">
+  <span class="caption">the frame opens onto this</span>
+</div>
+
+<div class="hole" id="hole">
+  <div class="panel panel--left"></div>
+  <div class="panel panel--right"></div>
+  <div class="panel panel--top"></div>
+  <div class="panel panel--bottom"></div>
+</div>
+<div class="edge" id="edge"></div>
+
+<header>
+  <b>Grid-quantised frame</b>
+  <span>layout · motion — the frame's thickness is always a whole number of grid squares</span>
+  <span class="spacer"></span>
+</header>
+
+<div class="states" id="states"></div>
+
+<div class="readout">
+  <span>cell <b id="cellOut">16px</b> · frame in cells <b id="cellsOut">—</b></span>
+  <span>clip <b id="clipOut">—</b></span>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-cell">grid cell</label>
+    <input id="c-cell" type="range" min="6" max="48" step="1" value="16"><output for="c-cell">16px</output></div>
+  <div class="ctrl"><label for="c-top">top cells</label>
+    <input id="c-top" type="range" min="0" max="40" step="1" value="28"><output for="c-top">28</output></div>
+  <div class="ctrl"><label for="c-side">side cells</label>
+    <input id="c-side" type="range" min="0" max="60" step="1" value="2"><output for="c-side">2</output></div>
+  <div class="ctrl"><label for="c-bottom">bottom cells</label>
+    <input id="c-bottom" type="range" min="0" max="20" step="0.5" value="1.5"><output for="c-bottom">1.5</output></div>
+  <div class="ctrl"><label for="c-dur">duration</label>
+    <input id="c-dur" type="range" min="200" max="4000" step="100" value="1800" data-var="--dur" data-unit="ms"><output for="c-dur">1800ms</output></div>
+  <label class="toggle"><input type="checkbox" id="showEdge" checked> hole outline</label>
+  <div class="ctrl"><label for="c-scrub">scrub</label>
+    <select id="c-from" class="pick"></select>
+    <span>→</span>
+    <select id="c-to" class="pick"></select>
+    <input id="c-scrub" type="range" min="0" max="100" step="1" value="0"><output for="c-scrub">0%</output></div>
+</div>
+
+<script>
+/* the six named states from the original, measured in grid cells */
+const STATES = {
+  open:      { top: 28, left: 2, right: 2, bottom: 1.5 },
+  openToNav: { top: 6,  left: 2, right: 2, bottom: 1.5 },
+  toLeft:    { top: 6,  left: 38, right: 2, bottom: 1.5 },
+  toRight:   { top: 6,  left: 2, right: 38, bottom: 1.5 },
+  closed:    null,      // 50% from every side — the panels meet in the middle
+  fullyOpen: null,      // 100% — the panels clip away entirely
+};
+
+/* The cell is one rem, and the site makes the rem viewport-relative above
+   1080px: html { font-size: 0.833333vw }, i.e. 12px at a 1440 design width.
+   So the sheet scales with the window and a cell count means the same thing
+   at every size. Below that breakpoint the rem is fixed, which is why the
+   slider can take over. */
+const REM_VW = 0.833333 / 100;
+const CONFIG = { fluid: true, cell: 12, custom: { top: 28, side: 2, bottom: 1.5 } };
+function fluidCell() { return Math.max(6, Math.round(innerWidth * REM_VW)); }
+const root = document.documentElement;
+const edge = document.getElementById('edge');
+let current = 'closed';
+
+/* cells → percentage of the viewport, which is what the clip-path consumes.
+   Everything is expressed in cells first so the frame lands on grid lines. */
+/* a cell count becomes an inset percentage of the viewport. innerWidth can be
+   0 in a background/offscreen tab, and a division by it would write
+   -Infinity into the custom properties, so the divisor has a floor. */
+const pctX = px => 100 - (px / Math.max(1, innerWidth)) * 100;
+const pctY = px => 100 - (px / Math.max(1, innerHeight)) * 100;
+
+function syncCell() {
+  if (!CONFIG.fluid) return;
+  CONFIG.cell = fluidCell();
+  root.style.setProperty('--cell', CONFIG.cell + 'px');
+  const out = document.getElementById('cellOut');
+  if (out) out.textContent = CONFIG.cell + 'px (fluid)';
+}
+
+function insetsFor(name) {
+  if (name === 'closed') return { left: 50, right: 50, top: 50, bottom: 50 };
+  if (name === 'fullyOpen') return { left: 100, right: 100, top: 100, bottom: 100 };
+  const s = name === 'custom'
+    ? { top: CONFIG.custom.top, left: CONFIG.custom.side, right: CONFIG.custom.side, bottom: CONFIG.custom.bottom }
+    : STATES[name];
+  return {
+    left: pctX(CONFIG.cell * s.left),
+    right: pctX(CONFIG.cell * s.right),
+    top: pctY(CONFIG.cell * s.top),
+    bottom: pctY(CONFIG.cell * s.bottom),
+  };
+}
+
+/* the four custom properties are the only thing that ever changes */
+function write(i) {
+  root.style.setProperty('--left', i.left.toFixed(3) + 'vw');
+  root.style.setProperty('--right', i.right.toFixed(3) + 'vw');
+  root.style.setProperty('--top', i.top.toFixed(3) + 'vh');
+  root.style.setProperty('--bottom', i.bottom.toFixed(3) + 'vh');
+
+  // the outline traces the opening the four panels leave behind
+  const l = (100 - i.left), r = (100 - i.right), t = (100 - i.top), b = (100 - i.bottom);
+  edge.style.inset = `${t}vh ${r}vw ${b}vh ${l}vw`;
+  document.getElementById('clipOut').textContent =
+    `L ${i.left.toFixed(1)}vw · R ${i.right.toFixed(1)}vw · T ${i.top.toFixed(1)}vh · B ${i.bottom.toFixed(1)}vh`;
+}
+
+function apply(name) {
+  current = name;
+  const i = insetsFor(name);
+  write(i);
+
+  const cells = name === 'closed' || name === 'fullyOpen'
+    ? '—'
+    : (name === 'custom'
+        ? `${CONFIG.custom.top} top · ${CONFIG.custom.side} side · ${CONFIG.custom.bottom} bottom`
+        : `${STATES[name].top} top · ${STATES[name].left}/${STATES[name].right} side · ${STATES[name].bottom} bottom`);
+  document.getElementById('cellsOut').textContent = cells;
+  for (const b2 of document.querySelectorAll('.states button')) b2.setAttribute('aria-pressed', String(b2.dataset.state === name));
+}
+
+/* buttons for every state the original defines, plus the live custom one */
+const statesEl = document.getElementById('states');
+statesEl.innerHTML = [...Object.keys(STATES), 'custom']
+  .map(k => `<button type="button" data-state="${k}">${k}</button>`).join('');
+statesEl.addEventListener('click', e => { const b = e.target.closest('button'); if (b) apply(b.dataset.state); });
+
+/* `user` distinguishes a drag from the one-off call that seeds the labels —
+   only a drag should take a value off its automatic mode */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const go = user => { fn(Number(el.value), user); out.textContent = fmt(Number(el.value)); apply(current === 'closed' || current === 'fullyOpen' ? current : 'custom'); };
+  el.addEventListener('input', () => go(true)); go(false);
+};
+bind('c-cell', (v, user) => {
+  if (!user) return;                                  // seeding the label must not cancel fluid mode
+  CONFIG.fluid = false; CONFIG.cell = v;
+  root.style.setProperty('--cell', v + 'px');
+  document.getElementById('cellOut').textContent = v + 'px';
+}, v => v + 'px');
+bind('c-top', v => CONFIG.custom.top = v, v => v);
+bind('c-side', v => CONFIG.custom.side = v, v => v);
+bind('c-bottom', v => CONFIG.custom.bottom = v, v => v);
+document.querySelectorAll('.controls input[data-var]').forEach(input => {
+  const out = document.querySelector(`output[for="${input.id}"]`);
+  const go = () => { const v = input.value + (input.dataset.unit || ''); root.style.setProperty(input.dataset.var, v); out.textContent = v; };
+  input.addEventListener('input', go); go();
+});
+document.getElementById('showEdge').addEventListener('change', e => edge.style.opacity = e.target.checked ? '.5' : '0');
+addEventListener('resize', () => { syncCell(); apply(current); });
+
+/* Scrubbing between two named states.
+   On the site these transitions are not clicks: ScrollTrigger scrubs
+   getTweenToState("openToNav", "open") across the intro section, and later
+   sections scrub toLeft ↔ openToNav and fullyOpen → toLeft. Because the tween
+   interpolates the inset percentages, so does this — the scrub is linear in
+   percentage space, and the states themselves are still cell-quantised. */
+const NAMES = [...Object.keys(STATES), 'custom'];
+const fromSel = document.getElementById('c-from'), toSel = document.getElementById('c-to');
+for (const sel of [fromSel, toSel]) sel.innerHTML = NAMES.map(k => `<option>${k}</option>`).join('');
+fromSel.value = 'openToNav'; toSel.value = 'open';
+
+function scrub(p) {
+  const a = insetsFor(fromSel.value), b = insetsFor(toSel.value);
+  const mix = (x, y) => x + (y - x) * p;
+  document.body.classList.add('is-scrubbing');            // no transition while dragging
+  write({ left: mix(a.left, b.left), right: mix(a.right, b.right), top: mix(a.top, b.top), bottom: mix(a.bottom, b.bottom) });
+  document.getElementById('cellsOut').textContent = `${fromSel.value} → ${toSel.value} @ ${(p * 100).toFixed(0)}%`;
+  for (const btn of document.querySelectorAll('.states button')) btn.setAttribute('aria-pressed', 'false');
+}
+const scrubEl = document.getElementById('c-scrub');
+const scrubOut = document.querySelector('output[for="c-scrub"]');
+const runScrub = () => { const p = Number(scrubEl.value) / 100; scrubOut.textContent = Math.round(p * 100) + '%'; scrub(p); };
+scrubEl.addEventListener('input', runScrub);
+for (const sel of [fromSel, toSel]) sel.addEventListener('change', runScrub);
+statesEl.addEventListener('click', () => document.body.classList.remove('is-scrubbing'));
+
+/* the intro: closed → open, the same handoff the site's loader performs.
+   Driven by a timer rather than requestAnimationFrame: a tab that starts in the
+   background throttles rAF, and a frame that never opens is worse than one that
+   opens without its transition. */
+syncCell();
+apply('closed');
+setTimeout(() => apply('open'), 350);
+
+
+window.FRAME = { CONFIG, STATES, apply, scrub, insetsFor, syncCell, get state() { return current; } };
+</script>
+</body>
+</html>

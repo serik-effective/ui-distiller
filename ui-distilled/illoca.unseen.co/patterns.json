@@ -1,0 +1,108 @@
+{
+  "site": "https://illoca.unseen.co/",
+  "host": "illoca.unseen.co",
+  "analyzedAt": "2026-09-04",
+  "stats": {
+    "pages": 4,
+    "candidates": 6,
+    "distilled": 4
+  },
+  "patterns": [
+    {
+      "slug": "01-grid-quantised-frame",
+      "number": "01",
+      "name": "Grid-quantised clip-path frame",
+      "categories": [
+        "layout",
+        "page-transition",
+        "navigation"
+      ],
+      "description": "Four fixed graph-paper panels clip themselves from each side to leave a hole, thickness always a whole number of grid squares, scrubbed between named states as the page scrolls.",
+      "trigger": "page-load, scroll",
+      "difficulty": "Medium",
+      "fidelity": "high",
+      "score": 4.8,
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 3
+      },
+      "source": "https://illoca.unseen.co/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "02-blueprint-loader",
+      "number": "02",
+      "name": "Blueprint loader",
+      "categories": [
+        "loading",
+        "motion",
+        "page-transition"
+      ],
+      "description": "A looping technical sketch whose quadrants separate and whose icon group is wiped by a clip-path — and which hands the page to the frame part-way through its own exit.",
+      "trigger": "page-load",
+      "difficulty": "Medium",
+      "fidelity": "high",
+      "score": 4.1,
+      "scores": {
+        "visual": 4,
+        "originality": 5,
+        "reusability": 3,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://illoca.unseen.co/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-hand-annotations",
+      "number": "03",
+      "name": "Hand-annotation callouts",
+      "categories": [
+        "typography",
+        "layout",
+        "motion"
+      ],
+      "description": "Marker callouts tilted off-square beside the headline: characters fading in one at a time, each with a generated wobbly rule revealed by scaling along one axis.",
+      "trigger": "page-load",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 4.1,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 3,
+        "difficulty": 2
+      },
+      "source": "https://illoca.unseen.co/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "04-coordinate-readout",
+      "number": "04",
+      "name": "Blueprint coordinate readout",
+      "categories": [
+        "microinteraction",
+        "cursor",
+        "typography"
+      ],
+      "description": "A fixed corner readout of the pointer position in zero-padded tabular numerals, recolouring itself to stay legible over whatever passes behind it.",
+      "trigger": "pointer-move",
+      "difficulty": "Easy",
+      "fidelity": "high",
+      "score": 3.8,
+      "scores": {
+        "visual": 3,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 3,
+        "difficulty": 1
+      },
+      "source": "https://illoca.unseen.co/",
+      "needsNetwork": false
+    }
+  ]
+}

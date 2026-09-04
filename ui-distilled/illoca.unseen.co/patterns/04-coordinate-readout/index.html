@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blueprint coordinate readout — UI Distiller</title>
+<style>
+  :root {
+    --cell:16px;         /* one grid square — the unit the "cells" mode counts in */
+    --lerp:1;            /* pointer follow, 1 = instant (as the original)         */
+    --decimals:2;        /* display precision                                     */
+    --swap:200ms;        /* light ⇄ dark colour swap (transition-colors 200ms)    */
+    --ease:cubic-bezier(.62,.01,.21,1);
+
+    --grid-bg:#eadfc9; --grid-v:#d3c9b5; --grid-h:#e3d9c3;
+    --ink:#1e1c18; --muted:#7a7264; --accent:#283f7d;
+    --label:#414141; --value:gray;
+    --line:#cfc4ab; --panel:#fffdf7; --dark:#14161a;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; }
+  body { background:var(--grid-bg); color:var(--ink); overflow:hidden;
+         font:400 14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+         background-image:linear-gradient(90deg,var(--grid-v) 1px,transparent 0),linear-gradient(var(--grid-h) 1px,transparent 0);
+         background-size:var(--cell) var(--cell); background-attachment:fixed; }
+
+  header { position:fixed; inset:0 0 auto 0; z-index:6; display:flex; gap:12px; align-items:baseline; flex-wrap:wrap;
+           padding:12px 20px 12px 132px; }
+  header h1 { font-size:14px; font-weight:600; margin:0; }
+  header .meta { font-size:12px; color:var(--muted); }
+
+  /* the field: a light sheet with darker plates laid over it */
+  .field { position:absolute; inset:56px 0 52px; }
+  .plate { position:absolute; border-radius:2px; display:grid; place-items:center; font-size:12px; letter-spacing:.14em;
+           text-transform:uppercase; }
+  .plate--dark  { inset:6% 6% 30% 46%; background:var(--dark); color:#f2efe6; }
+  .plate--art   { inset:0 62% 44% 6%;  background:var(--accent); color:#fff; }
+  .plate--light { inset:62% 46% 6% 8%; border:1px solid var(--line); color:var(--muted); background:var(--panel); }
+
+  /* ---------- the pattern ----------
+     A fixed readout pinned to the top-left of the sheet — not a tooltip. It
+     never moves, never occludes the pointer, and recolours itself to stay
+     legible against whatever is currently behind it. */
+  .readout {
+    position:fixed; top:37px; left:32px; z-index:3;
+    font-family:"Architect Pro","Bradley Hand","Segoe Print",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:12px; line-height:1; font-variant-numeric:tabular-nums;
+    color:var(--r-value,var(--value));
+    transition:color var(--swap) var(--ease);
+    pointer-events:none; display:grid; gap:5px;
+  }
+  /* the label is the darker of the two — the number is the greyed part */
+  .readout span { color:var(--r-label,var(--label)); transition:color var(--swap) var(--ease); }
+  .readout.is-white, .readout.is-white span { --r-label:#fff; --r-value:#fff; }
+
+  /* the crosshair, drawn at the reported position */
+  .cross { position:fixed; inset:0; z-index:2; pointer-events:none; opacity:0; transition:opacity 200ms var(--ease); }
+  .cross.on { opacity:1; }
+  .cross i { position:absolute; background:var(--accent); opacity:.5; }
+  .cross .h { left:0; right:0; height:1px; }
+  .cross .v { top:0; bottom:0; width:1px; }
+  .dot { position:fixed; z-index:4; width:5px; height:5px; margin:-3px 0 0 -3px; border-radius:50%;
+         background:var(--accent); pointer-events:none; opacity:0; transition:opacity 200ms var(--ease); }
+  .dot.on { opacity:1; }
+
+  .controls { position:fixed; inset:auto 0 0 0; z-index:9; border-top:1px solid var(--line); background:var(--panel);
+              display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:7px 20px; font-size:12px; }
+  .ctrl { display:flex; align-items:center; gap:7px; }
+  .ctrl label { color:var(--muted); white-space:nowrap; }
+  .ctrl input[type="range"] { width:96px; accent-color:var(--accent); }
+  .ctrl output { font-variant-numeric:tabular-nums; min-width:44px; }
+  .hint { color:var(--muted); margin-left:auto; }
+  .btn { font:inherit; font-size:12px; background:var(--panel); color:var(--ink); border:1px solid var(--line);
+         border-radius:2px; padding:5px 11px; cursor:pointer; }
+  .btn:hover { border-color:var(--ink); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  @media (prefers-reduced-motion: reduce) { .readout, .readout span, .cross, .dot { transition-duration:1ms !important; } }
+</style>
+</head>
+<body>
+
+<header><h1>Blueprint coordinate readout</h1><span class="meta">microinteraction · cursor — trigger: move the pointer</span></header>
+
+<div class="field" id="field">
+  <div class="plate plate--art"   data-tone="dark">artwork</div>
+  <div class="plate plate--dark"  data-tone="dark">dark plate</div>
+  <div class="plate plate--light" data-tone="light">light panel</div>
+</div>
+
+<div class="cross" id="cross"><i class="h" id="ch"></i><i class="v" id="cv"></i></div>
+<div class="dot" id="dot"></div>
+
+<div class="readout" id="readout" aria-hidden="true">
+  <div><span>X</span> <b id="rx">0.00</b></div>
+  <div><span>Y</span> <b id="ry">0.00</b></div>
+</div>
+
+<div class="controls">
+  <div class="ctrl"><label for="c-unit">unit</label>
+    <select id="c-unit" class="btn"><option value="px">px</option><option value="cells">cells</option><option value="norm">0–1</option></select></div>
+  <div class="ctrl"><label for="c-cell">cell</label>
+    <input id="c-cell" type="range" min="8" max="48" step="1" value="16"><output for="c-cell">16px</output></div>
+  <div class="ctrl"><label for="c-lerp">follow</label>
+    <input id="c-lerp" type="range" min="2" max="100" step="1" value="100"><output for="c-lerp">1.00</output></div>
+  <div class="ctrl"><label for="c-dec">decimals</label>
+    <input id="c-dec" type="range" min="0" max="3" step="1" value="2"><output for="c-dec">2</output></div>
+  <button class="btn" id="snapBtn">Snap: off</button>
+  <span class="hint">behind the readout: <b id="toneOut">light</b></span>
+</div>
+
+<script>
+/* The original prints raw client pixels: clientX.toFixed(2).padStart(4,'0').
+   Those are the defaults here; cells, easing and snapping are the tunables
+   the distillation adds on top. */
+const CONFIG = { lerp: 1, decimals: 2, unit: 'px', snap: false, pad: 4 };
+
+const readout = document.getElementById('readout');
+const rx = document.getElementById('rx'), ry = document.getElementById('ry');
+const cross = document.getElementById('cross'), ch = document.getElementById('ch'), cv = document.getElementById('cv');
+const dot = document.getElementById('dot'), toneOut = document.getElementById('toneOut');
+
+const cellPx = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell'));
+
+let pointer = { x: innerWidth / 2, y: innerHeight / 2 };
+let eased = { ...pointer };
+let seen = false, raf = 0;
+
+/* What sits behind the readout decides its colour. The readout is
+   pointer-events:none, so a hit test at its own centre returns the surface
+   underneath it — any element opts in by declaring data-tone. The original
+   does the same switch from a section event bus (header:white / header:dark);
+   hit-testing keeps the demo self-contained and works for a fixed overlay
+   over any content. */
+function toneBehind() {
+  const r = readout.getBoundingClientRect();
+  const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  const owner = el && el.closest('[data-tone]');
+  return owner ? owner.dataset.tone : 'light';
+}
+
+function format(px, axis) {
+  const c = cellPx();
+  let n;
+  if (CONFIG.unit === 'px') n = px;
+  else if (CONFIG.unit === 'norm') n = px / (axis === 'x' ? innerWidth : innerHeight);
+  else n = px / c;
+  /* zero-padded so the readout never changes width as the pointer moves —
+     the reason it is set in tabular numerals in the first place */
+  return n.toFixed(CONFIG.decimals).padStart(CONFIG.pad, '0');
+}
+
+function frame() {
+  raf = 0;
+  eased.x += (pointer.x - eased.x) * CONFIG.lerp;
+  eased.y += (pointer.y - eased.y) * CONFIG.lerp;
+
+  const c = cellPx();
+  let px = eased.x, py = eased.y;
+  if (CONFIG.snap) { px = Math.round(px / c) * c; py = Math.round(py / c) * c; }
+
+  rx.textContent = format(px, 'x');
+  ry.textContent = format(py, 'y');
+
+  ch.style.top = py + 'px';
+  cv.style.left = px + 'px';
+  dot.style.transform = `translate(${px}px, ${py}px)`;
+
+  const tone = toneBehind();
+  readout.classList.toggle('is-white', tone === 'dark');
+  toneOut.textContent = tone;
+
+  if (Math.abs(pointer.x - eased.x) > 0.05 || Math.abs(pointer.y - eased.y) > 0.05) kick();
+}
+/* cancel-and-rerequest, never a boolean latch — a frame that never arrives
+   in a hidden tab must not be able to freeze the readout for good */
+function kick() { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+
+addEventListener('pointermove', e => {
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  if (!seen) { seen = true; cross.classList.add('on'); dot.classList.add('on'); eased = { ...pointer }; }
+  kick();
+}, { passive: true });
+
+addEventListener('pointerleave', () => { cross.classList.remove('on'); dot.classList.remove('on'); seen = false; });
+addEventListener('resize', kick);
+
+/* controls */
+const bind = (id, fn, fmt) => {
+  const el = document.getElementById(id), out = document.querySelector(`output[for="${id}"]`);
+  const apply = () => { fn(Number(el.value)); out.textContent = fmt(Number(el.value)); kick(); };
+  el.addEventListener('input', apply); apply();
+};
+bind('c-cell', v => document.documentElement.style.setProperty('--cell', v + 'px'), v => v + 'px');
+bind('c-lerp', v => CONFIG.lerp = v / 100, v => (v / 100).toFixed(2));
+bind('c-dec',  v => CONFIG.decimals = v, v => String(v));
+document.getElementById('c-unit').addEventListener('change', e => { CONFIG.unit = e.target.value; kick(); });
+document.getElementById('snapBtn').addEventListener('click', e => {
+  CONFIG.snap = !CONFIG.snap;
+  e.currentTarget.textContent = 'Snap: ' + (CONFIG.snap ? 'on' : 'off');
+  kick();
+});
+
+frame();
+window.READOUT = { CONFIG, frame, pointer, kick, toneBehind };
+</script>
+</body>
+</html>

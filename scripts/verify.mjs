@@ -186,8 +186,11 @@ async function checkHtml(file, where, p, host) {
   }
   // A demo may build its URLs in script rather than in markup, so check the code too
   // before deciding whether it really reaches the network.
-  const remoteInScript = /https?:\/\/(?!localhost|127\.)[\w.-]+/.test(
-    [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n'));
+  // XML namespace URIs are identifiers, never fetched — createElementNS('http://www.w3.org/2000/svg')
+  // is not a network dependency, so drop them before asking the question.
+  const scriptText = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).join('\n')
+    .replace(/https?:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xlink|1999\/xhtml|1998\/Math\/MathML)/g, '');
+  const remoteInScript = /https?:\/\/(?!localhost|127\.)[\w.-]+/.test(scriptText);
   const reachesNetwork = remote || remoteInScript;
 
   if (p.needsNetwork === false && reachesNetwork) err(where, 'patterns.json says needsNetwork:false but the demo loads remote resources');
