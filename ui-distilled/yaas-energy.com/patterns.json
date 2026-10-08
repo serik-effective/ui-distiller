@@ -1,0 +1,81 @@
+{
+  "site": "https://yaas-energy.com/",
+  "host": "yaas-energy.com",
+  "analyzedAt": "2026-10-08",
+  "stats": {
+    "pages": 2,
+    "candidates": 7,
+    "distilled": 3
+  },
+  "patterns": [
+    {
+      "slug": "02-perspective-arc",
+      "number": "02",
+      "name": "Дуга превращается в карточку",
+      "categories": [
+        "navigation",
+        "motion"
+      ],
+      "description": "Лента с перспективой сначала прокручивается по дуге, затем центральная карточка раскрывается на весь экран.",
+      "trigger": "Прокрутка",
+      "difficulty": "Hard",
+      "fidelity": "approximate",
+      "score": 4.8,
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 5
+      },
+      "source": "https://yaas-energy.com/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "01-webgl-scroll-scene",
+      "number": "01",
+      "name": "Объекты собираются в ряд",
+      "categories": [
+        "navigation",
+        "motion"
+      ],
+      "description": "Три объёмных объекта переходят из свободной композиции в единый ряд; курсор добавляет небольшой наклон.",
+      "trigger": "Прокрутка + движение курсора",
+      "difficulty": "Hard",
+      "fidelity": "approximate",
+      "score": 4.5,
+      "scores": {
+        "visual": 5,
+        "originality": 4,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 5
+      },
+      "source": "https://yaas-energy.com/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-pinned-card-stack",
+      "number": "03",
+      "name": "Карточки уходят из стопки",
+      "categories": [
+        "navigation",
+        "motion"
+      ],
+      "description": "Каждая карточка поднимается за край экрана с небольшим поворотом, открывая следующую.",
+      "trigger": "Прокрутка",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 3.9,
+      "scores": {
+        "visual": 4,
+        "originality": 3,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://yaas-energy.com/",
+      "needsNetwork": false
+    }
+  ]
+}

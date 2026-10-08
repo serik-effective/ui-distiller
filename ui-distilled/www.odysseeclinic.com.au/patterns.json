@@ -1,0 +1,81 @@
+{
+  "site": "https://www.odysseeclinic.com.au/",
+  "host": "www.odysseeclinic.com.au",
+  "analyzedAt": "2026-10-08",
+  "stats": {
+    "pages": 3,
+    "candidates": 7,
+    "distilled": 3
+  },
+  "patterns": [
+    {
+      "slug": "01-context-drawer",
+      "number": "01",
+      "name": "Меню с контекстным превью",
+      "categories": [
+        "pointer",
+        "interaction"
+      ],
+      "description": "Панель падает сверху справа, фон размывается. Наведение на пункт меняет изображение и короткое описание.",
+      "trigger": "Клик Menu + наведение / focus",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 4.2,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://www.odysseeclinic.com.au/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "02-counterstretch-reveal",
+      "number": "02",
+      "name": "Раскрытие с обратным растяжением",
+      "categories": [
+        "navigation",
+        "motion"
+      ],
+      "description": "Рамка изображения расширяется, внутреннее изображение компенсирует сжатие; после раскрытия начинается мягкий параллакс.",
+      "trigger": "Прокрутка",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 4.2,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://www.odysseeclinic.com.au/about",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-timed-editorial-focus",
+      "number": "03",
+      "name": "Редакционная лента с фокусом",
+      "categories": [
+        "pointer",
+        "interaction"
+      ],
+      "description": "Прогресс выбирает карточки по очереди; неактивные уходят в полупрозрачность, наведение переключает выбор.",
+      "trigger": "Таймер + наведение / focus / клик",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 3.9,
+      "scores": {
+        "visual": 4,
+        "originality": 3,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://www.odysseeclinic.com.au/",
+      "needsNetwork": false
+    }
+  ]
+}

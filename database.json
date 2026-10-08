@@ -1,0 +1,1179 @@
+{
+  "source": "UI Distiller effects library",
+  "sites": [
+    {
+      "site": "https://brand.squarespace.com/",
+      "host": "brand.squarespace.com",
+      "analyzedAt": "2026-09-04",
+      "stats": {
+        "pages": 3,
+        "candidates": 9,
+        "distilled": 4
+      },
+      "patterns": [
+        {
+          "slug": "01-spring-ring-carousel",
+          "number": "01",
+          "name": "Spring ring carousel",
+          "categories": [
+            "3d",
+            "motion",
+            "cards"
+          ],
+          "description": "Panels orbit a tilted 3D ring held by a spring; each card is a full-viewport layout cropped by clip-path that opens by un-cropping rather than growing.",
+          "trigger": "drag / wheel / arrow keys",
+          "difficulty": "Hard",
+          "fidelity": "high",
+          "score": 4.5,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 3,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://brand.squarespace.com/",
+          "needsNetwork": false,
+          "nameRu": "Кольцевая 3D-карусель",
+          "descriptionRu": "Карточки движутся по наклонному кольцу с пружинной инерцией и раскрываются из обрезки.",
+          "hasReadme": true
+        },
+        {
+          "slug": "02-directional-line-mask",
+          "number": "02",
+          "name": "Directional line mask",
+          "categories": [
+            "typography",
+            "motion",
+            "microinteraction"
+          ],
+          "description": "Masked lines that clip vertically but not horizontally and leave upward past the edge instead of retreating, so a text swap reads as one movement.",
+          "trigger": "text change",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.2,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://brand.squarespace.com/",
+          "needsNetwork": false,
+          "nameRu": "Смена строк через маску",
+          "descriptionRu": "Старые строки уходят вверх, новые приходят вслед за ними без обратного движения.",
+          "hasReadme": true
+        },
+        {
+          "slug": "03-conditional-difference-header",
+          "number": "03",
+          "name": "Conditional difference header",
+          "categories": [
+            "navigation",
+            "background",
+            "microinteraction"
+          ],
+          "description": "A white header in difference blend that inverts against anything beneath it — and is deliberately switched off over the blurred menu, where the blend fails.",
+          "trigger": "scroll / menu open",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 3,
+            "difficulty": 1
+          },
+          "source": "https://brand.squarespace.com/",
+          "needsNetwork": false,
+          "nameRu": "Шапка с инверсией цвета",
+          "descriptionRu": "Шапка меняет цвет относительно фона; инверсия отключается над размытым меню.",
+          "hasReadme": true
+        },
+        {
+          "slug": "04-pinned-poster-sequence",
+          "number": "04",
+          "name": "Pinned poster sequence",
+          "categories": [
+            "scroll",
+            "motion",
+            "3d"
+          ],
+          "description": "A sticky stage where one scroll progress value drives two staged animations: a caption converging from both edges, a hold, then a 3D rotation of the poster.",
+          "trigger": "scroll",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.3,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://brand.squarespace.com/color",
+          "needsNetwork": false,
+          "nameRu": "Закреплённый постер",
+          "descriptionRu": "Прокрутка сначала собирает подписи, удерживает их, затем поворачивает постер в 3D.",
+          "hasReadme": true
+        }
+      ],
+      "name": "Squarespace Brand"
+    },
+    {
+      "site": "https://huyml.co/",
+      "host": "huyml.co",
+      "analyzedAt": "2026-09-04",
+      "stats": {
+        "pages": 2,
+        "candidates": 6,
+        "distilled": 3
+      },
+      "patterns": [
+        {
+          "slug": "01-perspective-conveyor",
+          "number": "01",
+          "name": "Perspective conveyor",
+          "categories": [
+            "scroll",
+            "3d",
+            "cards"
+          ],
+          "description": "A belt of cards that never stops: it drifts on its own and the wheel adds to it, while distance from centre folds each card away on X and pushes it back in Z.",
+          "trigger": "drift + wheel",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 4.4,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 3,
+            "interest": 4,
+            "difficulty": 4
+          },
+          "source": "https://huyml.co/",
+          "needsNetwork": true,
+          "nameRu": "Бесконечный конвейер в перспективе",
+          "descriptionRu": "Карточки движутся сами и от колеса мыши; края ленты уходят в глубину.",
+          "hasReadme": true
+        },
+        {
+          "slug": "02-ghost-list",
+          "number": "02",
+          "name": "Ghost list",
+          "categories": [
+            "scroll",
+            "typography",
+            "layout"
+          ],
+          "description": "Every entry sits at 24% opacity and only the one crossing an invisible reading line comes to full — legibility as a function of position, with no selection state to manage.",
+          "trigger": "shared virtual scroll",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.1,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 3,
+            "difficulty": 2
+          },
+          "source": "https://huyml.co/",
+          "needsNetwork": true,
+          "nameRu": "Список с линией чтения",
+          "descriptionRu": "Из полупрозрачного списка выделяется строка, проходящая через центр чтения.",
+          "hasReadme": true
+        },
+        {
+          "slug": "03-synced-readouts",
+          "number": "03",
+          "name": "Synced readouts",
+          "categories": [
+            "microinteraction",
+            "typography",
+            "motion"
+          ],
+          "description": "One index feeds five independent readouts — counter, category, name, meta panel, palette — each offset by a stagger so a single change reads as a sequence across the screen.",
+          "trigger": "index change",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 3.9,
+          "scores": {
+            "visual": 3,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://huyml.co/",
+          "needsNetwork": true,
+          "nameRu": "Синхронная смена подписей",
+          "descriptionRu": "Один выбор последовательно обновляет счётчик, название, категорию и палитру.",
+          "hasReadme": true
+        }
+      ],
+      "name": "Huy ML"
+    },
+    {
+      "site": "https://illoca.unseen.co/",
+      "host": "illoca.unseen.co",
+      "analyzedAt": "2026-09-04",
+      "stats": {
+        "pages": 4,
+        "candidates": 8,
+        "distilled": 6
+      },
+      "patterns": [
+        {
+          "slug": "01-scroll-camera-sequence",
+          "number": "01",
+          "name": "Scroll-scrubbed camera sequence",
+          "categories": [
+            "scroll",
+            "3d",
+            "webgl",
+            "motion"
+          ],
+          "description": "One baked camera animation, cut at its own keyframes into segments — and each page section scrubs exactly one of them, so the flight through the scene never restarts.",
+          "trigger": "scroll",
+          "difficulty": "Hard",
+          "fidelity": "approximate",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://illoca.unseen.co/",
+          "needsNetwork": false,
+          "nameRu": "Полёт камеры по разделам",
+          "descriptionRu": "Каждая секция управляет своим фрагментом единой непрерывной анимации камеры.",
+          "hasReadme": true
+        },
+        {
+          "slug": "02-blueprint-cel-shading",
+          "number": "02",
+          "name": "Blueprint cel shading",
+          "categories": [
+            "webgl",
+            "3d",
+            "image-effect",
+            "cursor"
+          ],
+          "description": "Two-step diffuse, a voronoi spray mask that breaks the shadow edge into stipple, height-ramped grain, and a pointer window that turns the surface into its blueprint.",
+          "trigger": "ambient, pointer-move",
+          "difficulty": "Hard",
+          "fidelity": "high",
+          "score": 4.5,
+          "scores": {
+            "visual": 5,
+            "originality": 4,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://illoca.unseen.co/",
+          "needsNetwork": false,
+          "nameRu": "Переход в чертёж под курсором",
+          "descriptionRu": "Ступенчатые тени и зерно превращаются в технический чертёж в области указателя.",
+          "hasReadme": true
+        },
+        {
+          "slug": "03-grid-quantised-frame",
+          "number": "03",
+          "name": "Grid-quantised clip-path frame",
+          "categories": [
+            "layout",
+            "page-transition",
+            "navigation"
+          ],
+          "description": "Four fixed graph-paper panels clip themselves from each side to leave a hole, thickness always a whole number of grid squares, scrubbed between named states as the page scrolls.",
+          "trigger": "page-load, scroll",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 3
+          },
+          "source": "https://illoca.unseen.co/",
+          "needsNetwork": false,
+          "nameRu": "Рамка по клеткам сетки",
+          "descriptionRu": "Четыре панели открывают окно, меняя толщину только на целое число клеток.",
+          "hasReadme": true
+        },
+        {
+          "slug": "04-blueprint-loader",
+          "number": "04",
+          "name": "Blueprint loader",
+          "categories": [
+            "loading",
+            "motion",
+            "page-transition"
+          ],
+          "description": "A looping technical sketch whose quadrants separate and whose icon group is wiped by a clip-path — and which hands the page to the frame part-way through its own exit.",
+          "trigger": "page-load",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.1,
+          "scores": {
+            "visual": 4,
+            "originality": 5,
+            "reusability": 3,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://illoca.unseen.co/",
+          "needsNetwork": false,
+          "nameRu": "Загрузчик-чертёж",
+          "descriptionRu": "Части технического эскиза расходятся и передают сцену рамке страницы.",
+          "hasReadme": true
+        },
+        {
+          "slug": "05-hand-annotations",
+          "number": "05",
+          "name": "Hand-annotation callouts",
+          "categories": [
+            "typography",
+            "layout",
+            "motion"
+          ],
+          "description": "Marker callouts tilted off-square beside the headline: characters fading in one at a time, each with a generated wobbly rule revealed by scaling along one axis.",
+          "trigger": "page-load",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.1,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 3,
+            "difficulty": 2
+          },
+          "source": "https://illoca.unseen.co/",
+          "needsNetwork": false,
+          "nameRu": "Рукописные пометки",
+          "descriptionRu": "Наклонённые подписи проявляются по буквам вместе с неровной подчёркивающей линией.",
+          "hasReadme": true
+        },
+        {
+          "slug": "06-coordinate-readout",
+          "number": "06",
+          "name": "Blueprint coordinate readout",
+          "categories": [
+            "microinteraction",
+            "cursor",
+            "typography"
+          ],
+          "description": "A fixed corner readout of the pointer position in zero-padded tabular numerals, recolouring itself to stay legible over whatever passes behind it.",
+          "trigger": "pointer-move",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 3.8,
+          "scores": {
+            "visual": 3,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 3,
+            "difficulty": 1
+          },
+          "source": "https://illoca.unseen.co/",
+          "needsNetwork": false,
+          "nameRu": "Координаты указателя",
+          "descriptionRu": "Угловой счётчик показывает положение курсора и меняет цвет для читаемости.",
+          "hasReadme": true
+        }
+      ],
+      "name": "Illoca"
+    },
+    {
+      "site": "https://mecha-xyz.webflow.io/",
+      "host": "mecha-xyz.webflow.io",
+      "analyzedAt": "2026-09-03",
+      "stats": {
+        "pages": 2,
+        "candidates": 9,
+        "distilled": 7
+      },
+      "patterns": [
+        {
+          "slug": "01-overscroll-footer-reveal",
+          "number": "01",
+          "name": "Overscroll footer reveal",
+          "categories": [
+            "scroll",
+            "motion",
+            "microinteraction"
+          ],
+          "description": "At the scroll limit, further wheel deltas become pressure that lifts the whole page off a fixed footer, then drops it back on a different curve.",
+          "trigger": "wheel at scroll limit",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 3
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": false,
+          "nameRu": "Футер за пределом прокрутки",
+          "descriptionRu": "Дополнительное движение колеса приподнимает страницу и открывает футер под ней.",
+          "hasReadme": true
+        },
+        {
+          "slug": "02-push-cover-page-transition",
+          "number": "02",
+          "name": "Push-and-cover page transition",
+          "categories": [
+            "page-transition",
+            "navigation",
+            "motion"
+          ],
+          "description": "The outgoing page is pushed upward while a panel in the destination's own colour rises over it; the swap happens under cover and the new page arrives from the same offset.",
+          "trigger": "click",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.5,
+          "scores": {
+            "visual": 5,
+            "originality": 4,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 3
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": false,
+          "nameRu": "Переход с перекрывающей панелью",
+          "descriptionRu": "Панель поднимается вместе с уходящей страницей; новый контент появляется под её прикрытием.",
+          "hasReadme": true
+        },
+        {
+          "slug": "03-section-progress-nav",
+          "number": "03",
+          "name": "Section progress navigation",
+          "categories": [
+            "navigation",
+            "scroll",
+            "motion"
+          ],
+          "description": "A side nav generated from the page's own sections, each item carrying a progress line scrubbed across that section's range, anchored to the viewport centre.",
+          "trigger": "scroll",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.4,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 5,
+            "difficulty": 3
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": false,
+          "nameRu": "Навигация с прогрессом разделов",
+          "descriptionRu": "У каждой секции своя линия прогресса, привязанная к положению в экране.",
+          "hasReadme": true
+        },
+        {
+          "slug": "04-reversible-line-mask",
+          "number": "04",
+          "name": "Reversible line mask reveal",
+          "categories": [
+            "typography",
+            "scroll",
+            "motion"
+          ],
+          "description": "Per-line clip-path masks that open at the bottom for descenders, with an authored exit at 0.6x duration, different easing and reversed stagger.",
+          "trigger": "scroll",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.2,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": false,
+          "nameRu": "Обратимое раскрытие строк",
+          "descriptionRu": "Маски открывают текст по строкам; выход быстрее входа и идёт в обратном порядке.",
+          "hasReadme": true
+        },
+        {
+          "slug": "05-drag-spring-3d",
+          "number": "05",
+          "name": "Drag-spring 3D object",
+          "categories": [
+            "3d",
+            "webgl",
+            "scroll",
+            "motion"
+          ],
+          "description": "Scroll scrubs a base rotation while dragging adds a clamped tilt integrated by a real spring; orthographic frustum rebuilt from container aspect.",
+          "trigger": "drag + scroll",
+          "difficulty": "Hard",
+          "fidelity": "approximate",
+          "score": 4.2,
+          "scores": {
+            "visual": 5,
+            "originality": 4,
+            "reusability": 3,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": true,
+          "nameRu": "3D-объект с пружинным наклоном",
+          "descriptionRu": "Прокрутка вращает объект, перетаскивание добавляет наклон с упругим возвратом.",
+          "hasReadme": true
+        },
+        {
+          "slug": "06-three-state-spring-cursor",
+          "number": "06",
+          "name": "Three-state spring cursor",
+          "categories": [
+            "cursor",
+            "microinteraction",
+            "motion"
+          ],
+          "description": "Three cursor heads sharing one lerped position, transformed from the viewport centre and crossfaded by delegated hover state.",
+          "trigger": "pointer-move",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 4,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": false,
+          "nameRu": "Курсор с тремя состояниями",
+          "descriptionRu": "Три вида курсора делят одну плавную траекторию и сменяют друг друга при наведении.",
+          "hasReadme": true
+        },
+        {
+          "slug": "07-gated-preloader",
+          "number": "07",
+          "name": "Gated preloader",
+          "categories": [
+            "loading",
+            "motion",
+            "microinteraction"
+          ],
+          "description": "Three independent readiness gates converge on one exit; the looping mark always finishes its current cycle, and a session flag picks full or short intro.",
+          "trigger": "page-load",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 3.7,
+          "scores": {
+            "visual": 4,
+            "originality": 3,
+            "reusability": 4,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://mecha-xyz.webflow.io/",
+          "needsNetwork": false,
+          "nameRu": "Загрузчик с условиями готовности",
+          "descriptionRu": "Три сигнала готовности запускают выход; анимация заканчивает текущий цикл.",
+          "hasReadme": true
+        }
+      ],
+      "name": "Mecha"
+    },
+    {
+      "site": "https://patmos.studio/",
+      "host": "patmos.studio",
+      "analyzedAt": "2026-10-08",
+      "stats": {
+        "pages": 3,
+        "candidates": 7,
+        "distilled": 3
+      },
+      "patterns": [
+        {
+          "slug": "01-elastic-infinite-gallery",
+          "number": "01",
+          "name": "Упругая бесконечная галерея",
+          "categories": [
+            "navigation",
+            "motion"
+          ],
+          "description": "Картинка прогибается вокруг указателя и возвращается на место; лента циклически движется от колеса мыши.",
+          "trigger": "Наведение + колесо мыши / свайп",
+          "difficulty": "Hard",
+          "fidelity": "approximate",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://patmos.studio/",
+          "needsNetwork": false,
+          "hasReadme": true
+        },
+        {
+          "slug": "03-grid-list-preview",
+          "number": "03",
+          "name": "Изображения ↔ текстовый индекс",
+          "categories": [
+            "pointer",
+            "interaction"
+          ],
+          "description": "Один набор проектов переключается между сеткой изображений и компактным списком. В списке миниатюра следует за курсором.",
+          "trigger": "Клик Image / Text + наведение",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 4.2,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://patmos.studio/episode/",
+          "needsNetwork": false,
+          "hasReadme": true
+        },
+        {
+          "slug": "02-index-crossfade",
+          "number": "02",
+          "name": "Индекс заменяет сцену",
+          "categories": [
+            "navigation",
+            "motion"
+          ],
+          "description": "Контент уходит в темноту, затем на той же сцене появляются ссылки индекса. Закрытие возвращает исходный вид.",
+          "trigger": "Клик по Index / Escape",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 3.6,
+          "scores": {
+            "visual": 3,
+            "originality": 3,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://patmos.studio/about/",
+          "needsNetwork": false,
+          "hasReadme": true
+        }
+      ],
+      "name": "Patmos"
+    },
+    {
+      "site": "https://www.ceragres.ca/",
+      "host": "www.ceragres.ca",
+      "analyzedAt": "2026-09-03",
+      "stats": {
+        "pages": 3,
+        "candidates": 7,
+        "distilled": 5
+      },
+      "patterns": [
+        {
+          "slug": "01-pixel-image-reveal",
+          "number": "01",
+          "name": "Pixel image reveal",
+          "categories": [
+            "image-effect",
+            "canvas",
+            "scroll"
+          ],
+          "description": "Images enter as 80px blocks and de-pixelate over 2.2s — a canvas downscale drawn back up with smoothing off, plus a blur that fades with the blocks.",
+          "trigger": "intersection",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 3
+          },
+          "source": "https://www.ceragres.ca/",
+          "needsNetwork": false,
+          "nameRu": "Из пикселей в изображение",
+          "descriptionRu": "Крупные пиксельные блоки постепенно становятся чётким изображением.",
+          "hasReadme": true
+        },
+        {
+          "slug": "02-dialog-slide-over",
+          "number": "02",
+          "name": "Native dialog slide-over",
+          "categories": [
+            "modal",
+            "motion",
+            "microinteraction"
+          ],
+          "description": "A real <dialog> panel animated entirely in CSS with transition-behavior: allow-discrete and @starting-style, its edge chosen by a data attribute.",
+          "trigger": "click",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.7,
+          "scores": {
+            "visual": 4,
+            "originality": 5,
+            "reusability": 5,
+            "interest": 5,
+            "difficulty": 2
+          },
+          "source": "https://www.ceragres.ca/",
+          "needsNetwork": false,
+          "nameRu": "Выезжающая панель",
+          "descriptionRu": "Диалог выезжает от выбранного края экрана с плавным появлением фона.",
+          "hasReadme": true
+        },
+        {
+          "slug": "03-reciprocal-scale-card",
+          "number": "03",
+          "name": "Reciprocal-scale card hover",
+          "categories": [
+            "cards",
+            "hover",
+            "layout"
+          ],
+          "description": "The frame scales to 0.913 × 0.861 and the picture to its exact reciprocal, so the crop tightens while the photograph stays pixel-identical.",
+          "trigger": "hover",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.3,
+          "scores": {
+            "visual": 4,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://www.ceragres.ca/projets/",
+          "needsNetwork": false,
+          "nameRu": "Сжатие рамки без сжатия фото",
+          "descriptionRu": "Рамка уменьшается, а обратный масштаб изображения сохраняет его размер.",
+          "hasReadme": true
+        },
+        {
+          "slug": "04-has-dimming-megamenu",
+          "number": "04",
+          "name": ":has() dimming mega menu",
+          "categories": [
+            "menu",
+            "navigation",
+            "hover"
+          ],
+          "description": "Hovering one row dims every sibling to 54% through a single :has() selector, draws a hairline, and staggers the sub-list via a --delay custom property.",
+          "trigger": "hover",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.1,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://www.ceragres.ca/",
+          "needsNetwork": false,
+          "nameRu": "Меню с приглушением соседей",
+          "descriptionRu": "Наведение выделяет строку, затемняет соседние и раскрывает подменю.",
+          "hasReadme": true
+        },
+        {
+          "slug": "05-bracket-hover-marks",
+          "number": "05",
+          "name": "Bracket hover marks",
+          "categories": [
+            "microinteraction",
+            "navigation",
+            "typography"
+          ],
+          "description": "Two 4px pseudo-elements slide in as [ and ] around a nav label — one border definition rotated 180° to make its own mirror, with no reflow.",
+          "trigger": "hover",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 3.8,
+          "scores": {
+            "visual": 3,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 3,
+            "difficulty": 1
+          },
+          "source": "https://www.ceragres.ca/",
+          "needsNetwork": false,
+          "nameRu": "Скобки вокруг ссылки",
+          "descriptionRu": "При наведении две скобки сдвигаются к тексту, не меняя разметку.",
+          "hasReadme": true
+        }
+      ],
+      "name": "Céragrès"
+    },
+    {
+      "site": "https://www.odysseeclinic.com.au/",
+      "host": "www.odysseeclinic.com.au",
+      "analyzedAt": "2026-10-08",
+      "stats": {
+        "pages": 3,
+        "candidates": 7,
+        "distilled": 3
+      },
+      "patterns": [
+        {
+          "slug": "01-context-drawer",
+          "number": "01",
+          "name": "Меню с контекстным превью",
+          "categories": [
+            "pointer",
+            "interaction"
+          ],
+          "description": "Панель падает сверху справа, фон размывается. Наведение на пункт меняет изображение и короткое описание.",
+          "trigger": "Клик Menu + наведение / focus",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 4.2,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://www.odysseeclinic.com.au/",
+          "needsNetwork": false,
+          "hasReadme": true
+        },
+        {
+          "slug": "02-counterstretch-reveal",
+          "number": "02",
+          "name": "Раскрытие с обратным растяжением",
+          "categories": [
+            "navigation",
+            "motion"
+          ],
+          "description": "Рамка изображения расширяется, внутреннее изображение компенсирует сжатие; после раскрытия начинается мягкий параллакс.",
+          "trigger": "Прокрутка",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 4.2,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://www.odysseeclinic.com.au/about",
+          "needsNetwork": false,
+          "hasReadme": true
+        },
+        {
+          "slug": "03-timed-editorial-focus",
+          "number": "03",
+          "name": "Редакционная лента с фокусом",
+          "categories": [
+            "pointer",
+            "interaction"
+          ],
+          "description": "Прогресс выбирает карточки по очереди; неактивные уходят в полупрозрачность, наведение переключает выбор.",
+          "trigger": "Таймер + наведение / focus / клик",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 3.9,
+          "scores": {
+            "visual": 4,
+            "originality": 3,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://www.odysseeclinic.com.au/",
+          "needsNetwork": false,
+          "hasReadme": true
+        }
+      ],
+      "name": "Odyssée"
+    },
+    {
+      "site": "https://www.sashamartynchuk.com/",
+      "host": "www.sashamartynchuk.com",
+      "analyzedAt": "2026-09-04",
+      "stats": {
+        "pages": 2,
+        "candidates": 8,
+        "distilled": 6
+      },
+      "patterns": [
+        {
+          "slug": "01-cylindrical-page-fold",
+          "number": "01",
+          "name": "Cylindrical page fold",
+          "categories": [
+            "scroll",
+            "3d",
+            "layout"
+          ],
+          "description": "Rows wrap over the bottom edge onto a cylinder — curving through an arc, then continuing along the tangent — while the vanishing point tracks the scroll.",
+          "trigger": "scroll",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 4
+          },
+          "source": "https://www.sashamartynchuk.com/",
+          "needsNetwork": false,
+          "nameRu": "Цилиндрический изгиб страницы",
+          "descriptionRu": "Строки огибают нижний край по дуге, а точка схода следует за прокруткой.",
+          "hasReadme": true
+        },
+        {
+          "slug": "02-focus-burst",
+          "number": "02",
+          "name": "Focus burst",
+          "categories": [
+            "background",
+            "motion",
+            "layout"
+          ],
+          "description": "A full-screen light burst made only of gradients: conic rays under a radial mask, blurred and saturated glow layers, all composited with mix-blend-mode: screen.",
+          "trigger": "ambient",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 4.5,
+          "scores": {
+            "visual": 5,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 2
+          },
+          "source": "https://www.sashamartynchuk.com/",
+          "needsNetwork": false,
+          "nameRu": "Световая вспышка",
+          "descriptionRu": "Градиентные лучи, маски и светящиеся слои создают полноэкранный импульс.",
+          "hasReadme": true
+        },
+        {
+          "slug": "03-warped-display-type",
+          "number": "03",
+          "name": "Warped display type",
+          "categories": [
+            "typography",
+            "webgl",
+            "canvas"
+          ],
+          "description": "Canvas text as an alpha texture on a tall mesh, bent by a vertex shader that integrates a curvature profile down the glyph height rather than applying one rotation.",
+          "trigger": "scroll / control",
+          "difficulty": "Hard",
+          "fidelity": "approximate",
+          "score": 4.5,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 3,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://www.sashamartynchuk.com/",
+          "needsNetwork": false,
+          "nameRu": "Изогнутая типографика",
+          "descriptionRu": "Буквы размещены на сетке, которую шейдер изгибает по высоте текста.",
+          "hasReadme": true
+        },
+        {
+          "slug": "04-gpu-tier-probe",
+          "number": "04",
+          "name": "GPU tier probe",
+          "categories": [
+            "loading",
+            "responsive",
+            "canvas"
+          ],
+          "description": "A worker-side WebGL probe that refuses a context under a performance caveat, reads the unmasked renderer, and picks a quality tier before the heavy effects load.",
+          "trigger": "page-load",
+          "difficulty": "Medium",
+          "fidelity": "high",
+          "score": 4.1,
+          "scores": {
+            "visual": 2,
+            "originality": 5,
+            "reusability": 5,
+            "interest": 5,
+            "difficulty": 3
+          },
+          "source": "https://www.sashamartynchuk.com/",
+          "needsNetwork": false,
+          "nameRu": "Выбор качества по GPU",
+          "descriptionRu": "Проверка WebGL выбирает уровень качества до запуска тяжёлой сцены.",
+          "hasReadme": true
+        },
+        {
+          "slug": "05-elastic-pulse",
+          "number": "05",
+          "name": "Elastic pulse",
+          "categories": [
+            "buttons",
+            "microinteraction",
+            "hover"
+          ],
+          "description": "A hover squash measured in ems of the control's own type size, so a 12px pill and a 34px one deform by the same typographic amount before springing back.",
+          "trigger": "hover",
+          "difficulty": "Easy",
+          "fidelity": "high",
+          "score": 3.9,
+          "scores": {
+            "visual": 3,
+            "originality": 4,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 1
+          },
+          "source": "https://www.sashamartynchuk.com/",
+          "needsNetwork": false,
+          "nameRu": "Упругий импульс кнопки",
+          "descriptionRu": "Кнопка сжимается при наведении и возвращается пружиной; сила зависит от размера шрифта.",
+          "hasReadme": true
+        },
+        {
+          "slug": "06-scroll-phased-node-graph",
+          "number": "06",
+          "name": "Scroll-phased node graph",
+          "categories": [
+            "scroll",
+            "canvas",
+            "motion",
+            "background"
+          ],
+          "description": "A full-screen canvas whose whole life is nine named windows on one scroll progress, with each node staggered inside its phase by its own hashed delay.",
+          "trigger": "scroll, pointer",
+          "difficulty": "Hard",
+          "fidelity": "high",
+          "score": 4.2,
+          "scores": {
+            "visual": 4,
+            "originality": 4,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 4
+          },
+          "source": "https://www.sashamartynchuk.com/",
+          "needsNetwork": false,
+          "nameRu": "Граф, раскрывающийся по фазам",
+          "descriptionRu": "Прокрутка проводит узлы и связи через девять последовательных состояний.",
+          "hasReadme": true
+        }
+      ],
+      "name": "Sasha Martynchuk"
+    },
+    {
+      "site": "https://yaas-energy.com/",
+      "host": "yaas-energy.com",
+      "analyzedAt": "2026-10-08",
+      "stats": {
+        "pages": 2,
+        "candidates": 7,
+        "distilled": 3
+      },
+      "patterns": [
+        {
+          "slug": "02-perspective-arc",
+          "number": "02",
+          "name": "Дуга превращается в карточку",
+          "categories": [
+            "navigation",
+            "motion"
+          ],
+          "description": "Лента с перспективой сначала прокручивается по дуге, затем центральная карточка раскрывается на весь экран.",
+          "trigger": "Прокрутка",
+          "difficulty": "Hard",
+          "fidelity": "approximate",
+          "score": 4.8,
+          "scores": {
+            "visual": 5,
+            "originality": 5,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://yaas-energy.com/",
+          "needsNetwork": false,
+          "hasReadme": true
+        },
+        {
+          "slug": "01-webgl-scroll-scene",
+          "number": "01",
+          "name": "Объекты собираются в ряд",
+          "categories": [
+            "navigation",
+            "motion"
+          ],
+          "description": "Три объёмных объекта переходят из свободной композиции в единый ряд; курсор добавляет небольшой наклон.",
+          "trigger": "Прокрутка + движение курсора",
+          "difficulty": "Hard",
+          "fidelity": "approximate",
+          "score": 4.5,
+          "scores": {
+            "visual": 5,
+            "originality": 4,
+            "reusability": 4,
+            "interest": 5,
+            "difficulty": 5
+          },
+          "source": "https://yaas-energy.com/",
+          "needsNetwork": false,
+          "hasReadme": true
+        },
+        {
+          "slug": "03-pinned-card-stack",
+          "number": "03",
+          "name": "Карточки уходят из стопки",
+          "categories": [
+            "navigation",
+            "motion"
+          ],
+          "description": "Каждая карточка поднимается за край экрана с небольшим поворотом, открывая следующую.",
+          "trigger": "Прокрутка",
+          "difficulty": "Medium",
+          "fidelity": "approximate",
+          "score": 3.9,
+          "scores": {
+            "visual": 4,
+            "originality": 3,
+            "reusability": 5,
+            "interest": 4,
+            "difficulty": 3
+          },
+          "source": "https://yaas-energy.com/",
+          "needsNetwork": false,
+          "hasReadme": true
+        }
+      ],
+      "name": "Yaas Energy"
+    }
+  ]
+}

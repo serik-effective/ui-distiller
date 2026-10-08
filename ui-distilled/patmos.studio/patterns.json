@@ -1,0 +1,81 @@
+{
+  "site": "https://patmos.studio/",
+  "host": "patmos.studio",
+  "analyzedAt": "2026-10-08",
+  "stats": {
+    "pages": 3,
+    "candidates": 7,
+    "distilled": 3
+  },
+  "patterns": [
+    {
+      "slug": "01-elastic-infinite-gallery",
+      "number": "01",
+      "name": "Упругая бесконечная галерея",
+      "categories": [
+        "navigation",
+        "motion"
+      ],
+      "description": "Картинка прогибается вокруг указателя и возвращается на место; лента циклически движется от колеса мыши.",
+      "trigger": "Наведение + колесо мыши / свайп",
+      "difficulty": "Hard",
+      "fidelity": "approximate",
+      "score": 4.8,
+      "scores": {
+        "visual": 5,
+        "originality": 5,
+        "reusability": 4,
+        "interest": 5,
+        "difficulty": 5
+      },
+      "source": "https://patmos.studio/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "03-grid-list-preview",
+      "number": "03",
+      "name": "Изображения ↔ текстовый индекс",
+      "categories": [
+        "pointer",
+        "interaction"
+      ],
+      "description": "Один набор проектов переключается между сеткой изображений и компактным списком. В списке миниатюра следует за курсором.",
+      "trigger": "Клик Image / Text + наведение",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 4.2,
+      "scores": {
+        "visual": 4,
+        "originality": 4,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://patmos.studio/episode/",
+      "needsNetwork": false
+    },
+    {
+      "slug": "02-index-crossfade",
+      "number": "02",
+      "name": "Индекс заменяет сцену",
+      "categories": [
+        "navigation",
+        "motion"
+      ],
+      "description": "Контент уходит в темноту, затем на той же сцене появляются ссылки индекса. Закрытие возвращает исходный вид.",
+      "trigger": "Клик по Index / Escape",
+      "difficulty": "Medium",
+      "fidelity": "approximate",
+      "score": 3.6,
+      "scores": {
+        "visual": 3,
+        "originality": 3,
+        "reusability": 5,
+        "interest": 4,
+        "difficulty": 3
+      },
+      "source": "https://patmos.studio/about/",
+      "needsNetwork": false
+    }
+  ]
+}

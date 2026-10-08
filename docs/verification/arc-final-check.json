@@ -1,0 +1,26 @@
+{
+  "states": [
+    {
+      "scroll": 1152,
+      "meter": "Прогресс 35%",
+      "visible": 6
+    },
+    {
+      "scroll": 1994,
+      "meter": "Прогресс 62%",
+      "visible": 5
+    },
+    {
+      "scroll": 2743,
+      "meter": "Прогресс 86%",
+      "visible": 5
+    },
+    {
+      "scroll": 3137,
+      "meter": "Прогресс 99%",
+      "visible": 1
+    }
+  ],
+  "errors": [],
+  "mobileOverflow": false
+}

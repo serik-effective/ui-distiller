@@ -1,0 +1,135 @@
+{
+  "at": "2026-10-08T08:16:47.249Z",
+  "viewport": [
+    1440,
+    900
+  ],
+  "mobile": [
+    390,
+    844
+  ],
+  "offline": true,
+  "results": [
+    {
+      "host": "yaas-energy.com",
+      "slug": "01-webgl-scroll-scene",
+      "changed": true,
+      "behavior": {
+        "scroll": 1065,
+        "meter": "Сцена 49%",
+        "gl": true
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "yaas-energy.com",
+      "slug": "02-perspective-arc",
+      "changed": true,
+      "behavior": {
+        "scroll": 1453,
+        "meter": "Прогресс 45%"
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "yaas-energy.com",
+      "slug": "03-pinned-card-stack",
+      "changed": true,
+      "behavior": {
+        "scroll": 1389,
+        "meter": "Карточка 2 / 4"
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "patmos.studio",
+      "slug": "01-elastic-infinite-gallery",
+      "changed": true,
+      "behavior": {
+        "meter": "Галерея / -240 px",
+        "canvas": [
+          1440,
+          840
+        ]
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "patmos.studio",
+      "slug": "02-index-crossfade",
+      "changed": true,
+      "behavior": {
+        "open": true,
+        "closed": true
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "patmos.studio",
+      "slug": "03-grid-list-preview",
+      "changed": true,
+      "behavior": {
+        "mode": "text",
+        "preview": "preview on"
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "www.odysseeclinic.com.au",
+      "slug": "01-context-drawer",
+      "changed": true,
+      "behavior": {
+        "preview": "A collection of quiet interiors and open perspectives.",
+        "closed": true
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "www.odysseeclinic.com.au",
+      "slug": "02-counterstretch-reveal",
+      "changed": true,
+      "behavior": {
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "title": "reveal-copy visible"
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    },
+    {
+      "host": "www.odysseeclinic.com.au",
+      "slug": "03-timed-editorial-focus",
+      "changed": true,
+      "behavior": {
+        "counter": "3 : 4",
+        "paused": "true"
+      },
+      "theme": "dark",
+      "mobileOverflow": false,
+      "offlineRequests": [],
+      "errors": []
+    }
+  ]
+}

@@ -42,11 +42,19 @@ Two runs, deployed as static folders — this is exactly what the tool emits:
 
 ### The runs in this repo
 
+**[Browse all 40 effects](index.html)** from 9 sites in the shared catalog, with previews, site filters and search. See the [library guide](docs/effects-library.md) and [update notes](UPDATE.md).
+
 | Site | Patterns | A sample of what it found |
 |---|---|---|
 | [`mecha-xyz.webflow.io`](ui-distilled/mecha-xyz.webflow.io/) | 7 of 9 candidates | Overscroll footer reveal (wheel deltas past the scroll limit become pressure; lerp out, hand-rolled bezier back), push-and-cover page transition with a bfcache reset, section-progress nav generated from the page's own markup |
 | [`www.ceragres.ca`](ui-distilled/www.ceragres.ca/) | 5 of 7 candidates | Canvas de-pixelation reveal (80px blocks → 1, blur 6 → 0), a native `<dialog>` slide-over animated entirely by `allow-discrete` + `@starting-style`, a card hover whose frame and image scale by exact reciprocals so the photograph provably never moves |
-| [`brand.squarespace.com`](ui-distilled/brand.squarespace.com/) | 3 of 7 candidates | A spring-held 3D ring carousel whose cards are full-viewport layouts cropped by `clip-path`, masked lines that leave upward instead of retreating, a difference-blend header that knows when to switch itself off |
+| [`brand.squarespace.com`](ui-distilled/brand.squarespace.com/) | 4 of 9 candidates | A spring-held 3D ring carousel whose cards are full-viewport layouts cropped by `clip-path`, masked lines that leave upward instead of retreating, a difference-blend header that knows when to switch itself off |
+| [`huyml.co`](ui-distilled/huyml.co/) | 3 | Perspective conveyor, ghost list, synchronized readouts |
+| [`illoca.unseen.co`](ui-distilled/illoca.unseen.co/) | 6 | Scroll-driven camera sequence, blueprint shading, grid-quantised frame |
+| [`www.sashamartynchuk.com`](ui-distilled/www.sashamartynchuk.com/) | 6 | Cylindrical page fold, warped type, phased node graph |
+| [`yaas-energy.com`](ui-distilled/yaas-energy.com/) | 3 of 7 candidates | Scroll-driven WebGL scene, perspective arc-to-card, pinned card stack |
+| [`patmos.studio`](ui-distilled/patmos.studio/) | 3 of 7 candidates | Elastic infinite gallery, index crossfade, grid/list previews |
+| [`www.odysseeclinic.com.au`](ui-distilled/www.odysseeclinic.com.au/) | 3 of 7 candidates | Context drawer, counterstretch reveal, timed editorial focus |
 
 Each run keeps its rejected candidates, with scores and reasons, in `.work/candidates.md`. Three patterns from a rich-looking site is a legitimate result — padding the count is explicitly forbidden.
 
@@ -171,7 +179,9 @@ Consent overlays are hidden locally by default (they intercept every hover) — 
 
 **`content.mjs`** — builds a `content.json` placeholder pack from a random selection of the anonymised DESIGN.md files in [voltagent/awesome-design-md](https://github.com/voltagent/awesome-design-md) (MIT): design-system prose, palettes and type notes instead of lorem ipsum. Every sentence carrying a proper noun is filtered out, display labels are derived from the palette, and the source names appear only in a credit line.
 
-**`gallery.mjs`** — renders the root `index.html` from `patterns.json`.
+**`gallery.mjs`** — renders a site gallery from its `patterns.json`.
+
+**`library.mjs`** — rebuilds the shared root catalog and `database.json` from all site indexes. Run `node scripts/library.mjs` after adding effects; no browser or external packages are required.
 
 **`verify.mjs`** — structure, `patterns.json` integrity, README/REPORT completeness, JS syntax of every inline and external script, local asset resolution, gallery links, leftover references to the source origin, unpinned CDN versions, file sizes. It also catches two browser-only traps that a Node syntax check cannot see: a global `const top` / `window` / `location` / `document` (which throws a SyntaxError and silently kills the whole script), and shadowed globals that are merely confusing. Exit 0 clean, 1 on errors.
 

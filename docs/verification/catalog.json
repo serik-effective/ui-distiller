@@ -1,0 +1,218 @@
+{
+  "all": 40,
+  "noDailyGroup": true,
+  "noDailyBadges": true,
+  "sites": [
+    {
+      "host": "brand.squarespace.com",
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "host": "huyml.co",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "host": "illoca.unseen.co",
+      "expected": 6,
+      "actual": 6
+    },
+    {
+      "host": "mecha-xyz.webflow.io",
+      "expected": 7,
+      "actual": 7
+    },
+    {
+      "host": "patmos.studio",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "host": "www.ceragres.ca",
+      "expected": 5,
+      "actual": 5
+    },
+    {
+      "host": "www.odysseeclinic.com.au",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "host": "www.sashamartynchuk.com",
+      "expected": 6,
+      "actual": 6
+    },
+    {
+      "host": "yaas-energy.com",
+      "expected": 3,
+      "actual": 3
+    }
+  ],
+  "searched": 3,
+  "overflow": false,
+  "missing": [],
+  "errors": [],
+  "previews": [
+    {
+      "src": "ui-distilled/brand.squarespace.com/patterns/01-spring-ring-carousel/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/brand.squarespace.com/patterns/02-directional-line-mask/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/brand.squarespace.com/patterns/03-conditional-difference-header/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/brand.squarespace.com/patterns/04-pinned-poster-sequence/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/huyml.co/patterns/01-perspective-conveyor/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/huyml.co/patterns/02-ghost-list/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/huyml.co/patterns/03-synced-readouts/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/illoca.unseen.co/patterns/01-scroll-camera-sequence/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/illoca.unseen.co/patterns/02-blueprint-cel-shading/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/illoca.unseen.co/patterns/03-grid-quantised-frame/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/illoca.unseen.co/patterns/04-blueprint-loader/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/illoca.unseen.co/patterns/05-hand-annotations/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/illoca.unseen.co/patterns/06-coordinate-readout/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/01-overscroll-footer-reveal/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/02-push-cover-page-transition/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/03-section-progress-nav/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/04-reversible-line-mask/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/05-drag-spring-3d/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/06-three-state-spring-cursor/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/mecha-xyz.webflow.io/patterns/07-gated-preloader/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/patmos.studio/patterns/01-elastic-infinite-gallery/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/patmos.studio/patterns/03-grid-list-preview/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/patmos.studio/patterns/02-index-crossfade/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.ceragres.ca/patterns/01-pixel-image-reveal/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.ceragres.ca/patterns/02-dialog-slide-over/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.ceragres.ca/patterns/03-reciprocal-scale-card/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.ceragres.ca/patterns/04-has-dimming-megamenu/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.ceragres.ca/patterns/05-bracket-hover-marks/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.odysseeclinic.com.au/patterns/01-context-drawer/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.odysseeclinic.com.au/patterns/02-counterstretch-reveal/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.odysseeclinic.com.au/patterns/03-timed-editorial-focus/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.sashamartynchuk.com/patterns/01-cylindrical-page-fold/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.sashamartynchuk.com/patterns/02-focus-burst/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.sashamartynchuk.com/patterns/03-warped-display-type/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.sashamartynchuk.com/patterns/04-gpu-tier-probe/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.sashamartynchuk.com/patterns/05-elastic-pulse/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/www.sashamartynchuk.com/patterns/06-scroll-phased-node-graph/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/yaas-energy.com/patterns/02-perspective-arc/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/yaas-energy.com/patterns/01-webgl-scroll-scene/preview.jpg",
+      "loaded": true
+    },
+    {
+      "src": "ui-distilled/yaas-energy.com/patterns/03-pinned-card-stack/preview.jpg",
+      "loaded": true
+    }
+  ]
+}
